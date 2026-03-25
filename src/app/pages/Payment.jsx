@@ -1,0 +1,639 @@
+import { useState, useEffect, useRef } from "react";
+import { useTelegram } from "../context/TelegramContext";
+import "../../styles/Payment.css";
+
+const PaymentImages = {
+  click: "https://api.logobank.uz/media/logos_preview/Click-01_0xvqWH8.png",
+  tonkeeper: "https://i.ibb.co/jkLrSV3X/image-Photoroom-1.png",
+};
+
+function openExternalLink(url, provider) {
+  if (!url) return;
+  const tg = window?.Telegram?.WebApp;
+
+  try {
+    if (provider === "tonkeeper") {
+      if (tg?.openLink) {
+        tg.openLink(url, { try_instant_view: false });
+      } else {
+        window.location.href = url;
+      }
+      return;
+    }
+
+    if (tg?.openLink) {
+      tg.openLink(url, { try_instant_view: false });
+    } else if (tg?.openTelegramLink && url.includes("t.me")) {
+      tg.openTelegramLink(url);
+    } else {
+      window.location.href = url;
+    }
+  } catch (e) {
+    window.location.href = url;
+  }
+}
+
+const PROVIDER_CFG = {
+  click: {
+    logo: PaymentImages.click,
+    title: "Click To'lovi",
+    subtitle: "click.uz · Onlayn to'lov",
+    btnLabel: "Click orqali to'lash",
+    btnSub: "Tez · Xavfsiz · Ishonchli",
+    footer: "click.uz tomonidan himoyalangan · SSL xavfsiz",
+    topBar: "linear-gradient(90deg,#1d4ed8,#60a5fa,#1d4ed8)",
+    btnBg: "linear-gradient(135deg,#ffffff 0%,#2563eb 60%,#3b82f6 100%)",
+    btnShadow: "0 4px 22px rgba(37,99,235,.4)",
+    btnShadowHover: "0 8px 32px rgba(37,99,235,.6)",
+    logoBg: "white",
+    logoShadow: "0 4px 18px rgba(37,99,235,.35)",
+    payType: "Click · UZS",
+  },
+  tonkeeper: {
+    logo: PaymentImages.tonkeeper,
+    title: "Tonkeeper To'lovi",
+    subtitle: "ton.org · Blockchain to'lov",
+    btnLabel: "Tonkeeper orqali to'lash",
+    btnSub: "Tez · Xavfsiz · Himoyalangan",
+    footer: "TON blockchain tomonidan himoyalangan",
+    topBar: "linear-gradient(90deg,#0098ea,#54c0ff,#0098ea)",
+    btnBg: "linear-gradient(135deg,#005f99 0%,#0098ea 60%,#54c0ff 100%)",
+    btnShadow: "0 4px 22px rgba(0,152,234,.4)",
+    btnShadowHover: "0 8px 32px rgba(0,152,234,.6)",
+    logoBg: "#0f1923",
+    logoShadow: "0 4px 18px rgba(0,152,234,.35)",
+    payType: "Tonkeeper · TON",
+  },
+};
+
+function ReceiptModal({ provider, link, paymentId, amount, tonAmount, status, statusLoading, onCheckStatus, onClose, onPaid }) {
+  const [visible, setVisible] = useState(false);
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!paymentId || status === "paid" || status === "failed") return;
+    pollRef.current = setInterval(() => onCheckStatus(paymentId), 4000);
+    return () => clearInterval(pollRef.current);
+  }, [paymentId, status]);
+
+  useEffect(() => {
+    if (status === "paid") {
+      clearInterval(pollRef.current);
+      const t = setTimeout(() => {
+        setVisible(false);
+        setTimeout(() => onPaid(), 300);
+      }, 800);
+      return () => clearTimeout(t);
+    }
+  }, [status]);
+
+  const handleClose = () => {
+    clearInterval(pollRef.current);
+    setVisible(false);
+    setTimeout(onClose, 300);
+  };
+
+  const statusMap = {
+    pending: { label: "Kutilmoqda", color: "#f59e0b", dot: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+    paid:    { label: "To'landi ✓", color: "#22c55e", dot: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+    failed:  { label: "Xato",       color: "#ef4444", dot: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+  };
+  const s = statusMap[status] || statusMap.pending;
+  const cfg = PROVIDER_CFG[provider] || PROVIDER_CFG.click;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+  const refCode = paymentId ? `#${String(paymentId).padStart(8, "0")}` : "#--------";
+
+  return (
+    <div className="rcpt-overlay" onClick={handleClose}>
+      <div
+        className="rcpt-sheet"
+        onClick={(e) => e.stopPropagation()}
+        style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(40px)" }}
+      >
+        <div className="rcpt-top-bar" style={{ background: cfg.topBar }} />
+        <div className="rcpt-handle" />
+        <button className="rcpt-close" onClick={handleClose}>✕</button>
+
+        <div className="rcpt-header">
+          <div className="rcpt-logo" style={{ background: cfg.logoBg, boxShadow: cfg.logoShadow }}>
+            <img src={cfg.logo} alt={provider} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          </div>
+          <div>
+            <h2>{cfg.title}</h2>
+            <p>{cfg.subtitle}</p>
+          </div>
+        </div>
+
+        <div className="rcpt-amount">
+          <div className="rcpt-amount-label">To'lov miqdori</div>
+          <div className="rcpt-amount-val">
+            {amount ? Number(amount).toLocaleString("uz-UZ") : "—"}
+            <span>so'm</span>
+          </div>
+          {provider === "tonkeeper" && tonAmount && (
+            <div style={{
+              marginTop: 8,
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "rgba(0,152,234,0.12)",
+              border: "1px solid rgba(0,152,234,0.25)",
+              borderRadius: 20, padding: "4px 14px",
+            }}>
+              <svg width="13" height="13" viewBox="0 0 28 28" fill="none">
+                <path d="M14 2L3 8.5v11L14 26l11-6.5v-11L14 2z" fill="#0098ea" opacity=".3"/>
+                <path d="M14 2L3 8.5 14 15l11-6.5L14 2z" fill="#0098ea"/>
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#0098ea", fontFamily: "'JetBrains Mono', monospace" }}>
+                ≈ {tonAmount} TON
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="rcpt-rows">
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Qabul qiluvchi</span>
+            <span className="rcpt-row-v">Starsbot</span>
+          </div>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">To'lov turi</span>
+            <span className="rcpt-row-v">{cfg.payType}</span>
+          </div>
+          {provider === "tonkeeper" && tonAmount && (
+            <div className="rcpt-row">
+              <span className="rcpt-row-k">TON miqdori</span>
+              <span className="rcpt-row-v" style={{ color: "#0098ea" }}>{tonAmount} TON</span>
+            </div>
+          )}
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Chegirma</span>
+            <span className="rcpt-row-v">0%</span>
+          </div>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Sana / Vaqt</span>
+            <span className="rcpt-row-v">{dateStr} · {timeStr}</span>
+          </div>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Referans</span>
+            <span className="rcpt-row-v" style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>{refCode}</span>
+          </div>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Holat</span>
+            <span className="rcpt-badge" style={{ background: s.bg, color: s.color }}>
+              <span
+                className={`rcpt-dot ${status !== "paid" && status !== "failed" ? "pulse" : ""}`}
+                style={{ background: s.dot }}
+              />
+              {s.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="rcpt-scissors">
+          <div className="rcpt-dash" />
+          <span className="rcpt-scissors-icon">✂</span>
+          <div className="rcpt-dash" />
+        </div>
+
+        <div className="rcpt-actions">
+          <button
+            className="rcpt-pay-btn"
+            onClick={() => openExternalLink(link, provider)}
+            style={{ background: cfg.btnBg, boxShadow: cfg.btnShadow, width: "100%", border: "none" }}
+          >
+            <div className="rcpt-btn-left">
+              <div className="rcpt-btn-icon">
+                <img src={cfg.logo} alt={provider} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              </div>
+              <div>
+                <div className="rcpt-btn-title">{cfg.btnLabel}</div>
+                <div className="rcpt-btn-sub">{cfg.btnSub}</div>
+              </div>
+            </div>
+            <div className="rcpt-btn-arrow">→</div>
+          </button>
+
+          <div className="rcpt-refresh-row">
+            <span className="rcpt-refresh-label">To'lov holatini yangilash</span>
+            <button
+              className="rcpt-refresh-btn"
+              onClick={() => onCheckStatus(paymentId)}
+              disabled={statusLoading}
+            >
+              {statusLoading ? (
+                <>
+                  <svg className="rcpt-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Tekshirilmoqda
+                </>
+              ) : "🔄 Yangilash"}
+            </button>
+          </div>
+        </div>
+
+        <div className="rcpt-footer">{cfg.footer}</div>
+      </div>
+    </div>
+  );
+}
+
+function SuccessOverlay({ amount, onDone }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 80);
+    const t2 = setTimeout(() => setPhase(2), 700);
+    const t3 = setTimeout(() => setPhase(3), 4500);
+    const t4 = setTimeout(() => onDone(), 5000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, []);
+
+  const phaseClass = [phase >= 1 ? "sp1" : "", phase >= 2 ? "sp2" : ""].join(" ");
+
+  return (
+    <div
+      className={`success-overlay ${phaseClass}`}
+      style={{ animation: phase === 3 ? "successFadeOut .5s ease forwards" : "successFadeIn .35s ease forwards" }}
+    >
+      {phase >= 1 && (
+        <div className="confetti-container">
+          {Array.from({ length: 28 }).map((_, i) => {
+            const colors = ["#22c55e","#4ade80","#86efac","#2563eb","#60a5fa","#fbbf24","#f9a8d4"];
+            return (
+              <div key={i} className="confetti-dot" style={{
+                left: `${5 + (i * 3.3) % 92}%`,
+                top: "-10px",
+                width: `${5 + (i % 4) * 3}px`,
+                height: `${8 + (i % 3) * 4}px`,
+                background: colors[i % colors.length],
+                opacity: 0.85,
+                animationDuration: `${1.2 + (i % 5) * 0.2}s`,
+                animationDelay: `${(i * 0.07).toFixed(2)}s`,
+              }} />
+            );
+          })}
+        </div>
+      )}
+
+      <div className="success-circle-wrap">
+        <div className="success-ripple r1" />
+        <div className="success-ripple r2" />
+        <div className="success-circle">
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+            <path
+              className="success-check"
+              d="M10 22L18 30L33 13"
+              stroke="white" strokeWidth="3.5"
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <h2 className="success-title">To'lov amalga oshdi!</h2>
+      <p className="success-sub">Mablag' muvaffaqiyatli qabul qilindi</p>
+
+      <div className="success-amount-card">
+        <div className="success-amount-label">To'langan summa</div>
+        <div className="success-amount-val">
+          {amount ? Number(amount).toLocaleString("uz-UZ") : "—"}
+          <span>so'm</span>
+        </div>
+      </div>
+
+      <p className="success-redirect-hint">bosh sahifaga yo'naltirilmoqda...</p>
+    </div>
+  );
+}
+
+function TonRateCard({ amount, tonRate, loading }) {
+  const amountNum = parseFloat(amount);
+  const isValidAmount = amount && !isNaN(amountNum) && amountNum >= 1000;
+
+  const tonAmount = isValidAmount && tonRate
+    ? (amountNum / tonRate.ton_uzs).toFixed(4)
+    : null;
+
+  return (
+    <div className="ton-rate-card">
+      <div className="ton-rate-left">
+        <div className="ton-icon-wrap">
+          <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+            <path d="M14 2L3 8.5v11L14 26l11-6.5v-11L14 2z" fill="#0098ea" opacity=".35"/>
+            <path d="M14 2L3 8.5 14 15l11-6.5L14 2z" fill="#0098ea"/>
+          </svg>
+        </div>
+        <div>
+          <div className="ton-rate-label">TON kursi</div>
+          <div className="ton-rate-sub">
+            {loading
+              ? "yuklanmoqda..."
+              : tonRate
+                ? `1 TON ≈ ${Number(tonRate.ton_uzs).toLocaleString("uz-UZ")} so'm`
+                : "ma'lumot yo'q"
+            }
+          </div>
+        </div>
+      </div>
+
+      <div className="ton-rate-right">
+        {loading ? (
+          <div className="ton-rate-loading">
+            <div className="ton-rate-spin" />
+            <span>kurs olinmoqda</span>
+          </div>
+        ) : tonAmount ? (
+          <>
+            <div className="ton-amount-big">
+              ≈ {tonAmount}
+              <span>TON</span>
+            </div>
+            <div className="ton-rate-detail">
+              {tonRate && `$${tonRate.ton_usd} · ${Number(tonRate.usd_uzs).toLocaleString("uz-UZ")} so'm/$`}
+            </div>
+          </>
+        ) : (
+          <div className="ton-amount-big" style={{ color: "rgba(0,152,234,0.3)", fontSize: 13 }}>
+            summa kiriting
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Payment() {
+  const { user } = useTelegram();
+  const [method, setMethod] = useState("click");
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
+  const [loadedImages, setLoadedImages] = useState(new Set());
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalProvider, setModalProvider] = useState(null);
+  const [modalLink, setModalLink] = useState(null);
+  const [modalPaymentId, setModalPaymentId] = useState(null);
+  const [modalTonAmount, setModalTonAmount] = useState(null);
+  const [modalStatus, setModalStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const [tonRate, setTonRate] = useState(null);
+  const [tonRateLoading, setTonRateLoading] = useState(false);
+
+  useEffect(() => {
+    if (method === "tonkeeper") {
+      fetchTonRate();
+    }
+  }, [method]);
+
+  const debounceRef = useRef(null);
+  useEffect(() => {
+    if (method !== "tonkeeper") return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (!tonRate) fetchTonRate();
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [amount, method]);
+
+  const fetchTonRate = async () => {
+    try {
+      setTonRateLoading(true);
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/ton/kurs.php");
+      const data = await res.json();
+      if (data.status === "ok") {
+        setTonRate(data);
+      }
+    } catch (err) {
+      console.error("❌ fetchTonRate:", err);
+    } finally {
+      setTonRateLoading(false);
+    }
+  };
+
+  const handleImageLoad = (m) => setLoadedImages((prev) => new Set(prev).add(m));
+  const isImageLoaded = (m) => loadedImages.has(m);
+
+  const handleAmountChange = (e) => {
+    const value = e.target.value;
+    setAmount(value);
+    if (value === "" || !isNaN(parseFloat(value))) setError("");
+  };
+
+  const checkClickStatus = async (paymentId) => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch(`https://tezpremium.uz/MilliyDokon/click_status.php?payment_id=${paymentId}`);
+      const data = await res.json();
+      const newStatus = data.status || "pending";
+      setModalStatus(newStatus);
+      return newStatus;
+    } catch (err) {
+      console.error("❌ checkClickStatus:", err);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const checkTonStatus = async (paymentId) => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch(`https://tezpremium.uz/MilliyDokon/ton/ton_status.php?payment_id=${paymentId}`);
+      const data = await res.json();
+      const newStatus = data.status || "pending";
+      setModalStatus(newStatus);
+      return newStatus;
+    } catch (err) {
+      console.error("❌ checkTonStatus:", err);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handlePaid = () => {
+    setModalOpen(false);
+    setShowSuccess(true);
+  };
+
+  const handleSuccessDone = () => {
+    setShowSuccess(false);
+    window.location.href = "/";
+  };
+
+  const handleSubmit = async () => {
+    const amountNum = parseFloat(amount);
+    if (!amount || isNaN(amountNum))    { setError("To'lov miqdorini kiriting"); return; }
+    if (amountNum < 1000)               { setError("To'lov miqdori 1000 so'mdan kam bo'lmasligi kerak"); return; }
+    if (amountNum > 1000000)            { setError("To'lov miqdori 1,000,000 so'mdan oshmasligi kerak"); return; }
+    if (!user?.id)                      { setError("Foydalanuvchi topilmadi"); return; }
+
+    setError("");
+    setSubmitLoading(true);
+
+    try {
+      if (method === "click") {
+        const res  = await fetch(`https://tezpremium.uz/MilliyDokon/click.php?user_id=${user.id}&amount=${amountNum}`);
+        const data = await res.json();
+
+        if (data.ok && data.link) {
+          setModalProvider("click");
+          setModalLink(data.link);
+          setModalPaymentId(data.payment_id);
+          setModalTonAmount(null);
+          setModalStatus(null);
+          setModalOpen(true);
+          if (data.payment_id) {
+            const init = await checkClickStatus(data.payment_id);
+            if (init === "paid") handlePaid();
+          }
+        } else {
+          setError(data.message || "To'lovda xatolik yuz berdi");
+        }
+
+      } else if (method === "tonkeeper") {
+        const res  = await fetch(`https://tezpremium.uz/MilliyDokon/ton/tonpay.php?user_id=${user.id}&amount=${amountNum}`);
+        const data = await res.json();
+
+        if (data.status === "ok" && data.link) {
+          setModalProvider("tonkeeper");
+          setModalLink(data.link);
+          setModalPaymentId(data.payment_id || null);
+          setModalTonAmount(data.ton || null);
+          setModalStatus(null);
+          setModalOpen(true);
+          if (data.payment_id) {
+            const init = await checkTonStatus(data.payment_id);
+            if (init === "paid") handlePaid();
+          }
+        } else {
+          setError(data.message || "To'lovda xatolik yuz berdi");
+        }
+      }
+    } catch (err) {
+      setError("To'lov yuborishda xatolik yuz berdi");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="payment-wrapper">
+        <div className="payment-card">
+          <div className="payment-row">
+            <div className="payment-row-column">
+              <span className="payment-label">Qabul qiluvchi</span>
+              <span className="payment-receiver">Starsbot</span>
+            </div>
+            <div className="payment-row-column">
+              <span className="payment-label">Chegirma</span>
+              <span className="payment-price">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="payment-input-block" style={{ marginBottom: 20 }}>
+          <p className="payment-info-text">
+            ℹ️ To'lov miqdori 1000 so'mdan kam va 1,000,000 so'mdan oshmasligi kerak
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <h3 className="payment-title">To'lov tizimini tanlang</h3>
+          <div className="payment-methods">
+            {["click", "tonkeeper"].map((m) => (
+              <div
+                key={m}
+                onClick={() => { setMethod(m); setError(""); }}
+                className={`payment-method ${method === m ? "selected" : ""}`}
+                style={{ cursor: "pointer" }}
+              >
+                {!isImageLoaded(m) && <div className="payment-skeleton" />}
+                <img
+                  src={PaymentImages[m]}
+                  alt={m.charAt(0).toUpperCase() + m.slice(1)}
+                  className={`payment-logo ${isImageLoaded(m) ? "loaded" : ""}`}
+                  onLoad={() => handleImageLoad(m)}
+                  onError={(e) => {
+                    handleImageLoad(m);
+                    e.currentTarget.style.display = "none";
+                    const fallback = { click: { letter: "C", color: "#fdb813" }, tonkeeper: { letter: "T", color: "#0098ea" } }[m];
+                    if (e.currentTarget.parentElement && fallback) {
+                      e.currentTarget.parentElement.innerHTML = `<span style="font-size:40px;font-weight:700;color:${fallback.color};">${fallback.letter}</span>`;
+                    }
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="payment-input-block">
+          <label htmlFor="amount-input" className="payment-input-label">
+            To'lov miqdori (so'm)
+          </label>
+          <input
+            id="amount-input"
+            type="number"
+            value={amount}
+            onChange={handleAmountChange}
+            placeholder="Masalan: 50000"
+            className="payment-input"
+            style={{ cursor: "text", pointerEvents: "auto", opacity: 1 }}
+          />
+          {error && <p className="payment-error">⚠️ {error}</p>}
+
+          {method === "tonkeeper" && (
+            <TonRateCard
+              amount={amount}
+              tonRate={tonRate}
+              loading={tonRateLoading}
+            />
+          )}
+        </div>
+
+        <button
+          onClick={handleSubmit}
+          className="payment-button"
+          style={{ cursor: submitLoading ? "not-allowed" : "pointer", opacity: submitLoading ? 0.7 : 1 }}
+          disabled={submitLoading}
+        >
+          {submitLoading ? "⏳ Yuklanmoqda..." : "✓ Yuborish"}
+        </button>
+      </div>
+
+      {modalOpen && modalLink && (
+        <ReceiptModal
+          provider={modalProvider}
+          link={modalLink}
+          paymentId={modalPaymentId}
+          amount={amount}
+          tonAmount={modalTonAmount}
+          status={modalStatus}
+          statusLoading={statusLoading}
+          onCheckStatus={modalProvider === "click" ? checkClickStatus : checkTonStatus}
+          onClose={() => setModalOpen(false)}
+          onPaid={handlePaid}
+        />
+      )}
+
+      {showSuccess && (
+        <SuccessOverlay
+          amount={amount}
+          onDone={handleSuccessDone}
+        />
+      )}
+    </>
+  );
+}
