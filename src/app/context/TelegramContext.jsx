@@ -41,7 +41,7 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
-  /* ========================= CREATE ORDER (orders.php) ========================= */
+  /* ========================= CREATE ORDER (Stars) ========================= */
   const createOrder = async ({ amount, sent, type, overall }) => {
     try {
       const telegram = window.Telegram?.WebApp;
@@ -61,7 +61,7 @@ export const TelegramProvider = ({ children }) => {
           initData,
           amount,
           sent: cleanSent,
-          type,
+          type,        // 'stars'
           overall,
         }),
       });
@@ -70,20 +70,85 @@ export const TelegramProvider = ({ children }) => {
 
       const data = await res.json();
 
-      if (data.ok) {
-        toast.success(`${amount} Stars muvaffaqiyatli yuborildi!`);
+      // Server muvaffaqiyatli javob qaytarsa
+      if (data.ok === true) {
+        toast.success(`${amount} Stars muvaffaqiyatli yuborildi!`, {
+          description: data.message || "Order created successfully"
+        });
+
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
-        return { ok: true, ...data };
+
+        return { 
+          ok: true, 
+          message: data.message, 
+          order_id: data.order_id 
+        };
       }
 
-      return { ok: false, message: data.message || "Buyurtma yaratilmadi" };
+      // Server xato qaytarsa
+      return { 
+        ok: false, 
+        message: data.message || "Buyurtma yaratilmadi" 
+      };
     } catch (err) {
       console.error("❌ createOrder error:", err);
       toast.error("To'lov amalga oshmadi", {
         description: err.message || "Server bilan bog'lanishda xatolik",
       });
       return { ok: false, message: err.message };
+    }
+  };
+
+  /* ========================= CREATE PREMIUM ORDER ========================= */
+  const createPremiumOrder = async ({ months, sent, overall }) => {
+    try {
+      const telegram = window.Telegram?.WebApp;
+      const initData = telegram?.initData || "";
+      if (!initData) {
+        toast.error("Telegram initData topilmadi");
+        return { ok: false, message: "initData topilmadi" };
+      }
+
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          initData,
+          months,
+          sent: sent.replace("@", "").trim(),
+          type: "premium",
+          overall,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      if (data.ok === true) {
+        toast.success(`Premium ${months} oyga muvaffaqiyatli sotib olindi!`, {
+          description: data.message || "Order created successfully"
+        });
+
+        await fetchUserFromApi(initData);
+        await fetchOrders(initData);
+
+        return { 
+          ok: true, 
+          message: data.message, 
+          order_id: data.order_id 
+        };
+      }
+
+      return { 
+        ok: false, 
+        message: data.message || "Premium buyurtma yaratilmadi" 
+      };
+    } catch (e) {
+      console.error("createPremiumOrder error:", e);
+      toast.error("Premium sotib olishda xatolik");
+      return { ok: false, message: e.message };
     }
   };
 
@@ -121,43 +186,14 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
-  /* ========================= CREATE PREMIUM ORDER ========================= */
-  const createPremiumOrder = async ({ months, sent, overall }) => {
-    try {
-      const telegram = window.Telegram?.WebApp;
-      const initData = telegram?.initData || "";
-      if (!initData) throw new Error("initData topilmadi");
-
-      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {  // yoki premium.php bo'lsa o'zgartiring
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          initData,
-          months,
-          sent: sent.replace("@", ""),
-          type: "premium",
-          overall,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.ok) {
-        await fetchUserFromApi(initData);
-        await fetchOrders(initData);
-        return { ok: true, ...data };
-      }
-      return { ok: false, message: data.message };
-    } catch (e) {
-      console.error("createPremiumOrder error:", e);
-      return { ok: false, message: e.message };
-    }
-  };
-
   /* ========================= CREATE GIFT ORDER ========================= */
   const createGiftOrder = async ({ giftId, sent, price }) => {
     try {
       const balance = Number(apiUser?.balance || 0);
-      if (balance < price) return { ok: false, message: "Balans yetarli emas" };
+      if (balance < price) {
+        toast.error("Balans yetarli emas");
+        return { ok: false, message: "Balans yetarli emas" };
+      }
 
       const telegram = window.Telegram?.WebApp;
       const initData = telegram?.initData || "";
@@ -169,20 +205,24 @@ export const TelegramProvider = ({ children }) => {
         body: JSON.stringify({
           initData,
           gift_id: giftId,
-          sent: sent.replace("@", ""),
+          sent: sent.replace("@", "").trim(),
           type: "gift",
         }),
       });
 
       const data = await res.json();
-      if (data.ok) {
+
+      if (data.ok === true) {
+        toast.success("Gift muvaffaqiyatli yuborildi!");
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
-        return { ok: true, data };
+        return { ok: true, order_id: data.order_id };
       }
+
       return { ok: false, message: data.message || "Gift xatosi" };
     } catch (e) {
       console.error("createGiftOrder error:", e);
+      toast.error("Gift yuborishda xatolik");
       return { ok: false, message: e.message };
     }
   };
@@ -278,14 +318,12 @@ export const TelegramProvider = ({ children }) => {
       })();
     } else {
       console.warn("⚠️ DEV MODE");
-      // Dev mode uchun kerakli ma'lumotlar
       setUser({
         id: "7521806735",
         first_name: "Test",
         username: "@testuser",
         isTelegram: false,
       });
-      // Dev mode da initData bo'sh bo'lishi mumkin
     }
   }, []);
 
