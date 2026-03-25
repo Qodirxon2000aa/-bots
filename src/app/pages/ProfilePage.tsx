@@ -18,40 +18,15 @@ import {
   Lock,
   ChevronDown,
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
-
-// ─── Telegram WebApp dan to'g'ridan-to'g'ri user ma'lumotlarini olish ─────────
-function getTelegramWebAppUser() {
-  try {
-    const tg = (window as any)?.Telegram?.WebApp;
-    const user = tg?.initDataUnsafe?.user;
-    if (!user) return null;
-    return {
-      id: user.id as number,
-      first_name: user.first_name as string,
-      last_name: (user.last_name ?? '') as string,
-      username: user.username ? `@${user.username}` : null,
-      photo_url: (user.photo_url ?? null) as string | null,
-      language_code: user.language_code as string | undefined,
-      isTelegram: true,
-    };
-  } catch {
-    return null;
-  }
-}
-// ──────────────────────────────────────────────────────────────────────────────
+import { useState, useEffect } from 'react';
 
 export function ProfilePage() {
   const navigate = useNavigate();
   const { user: appUser } = useApp();
-  // apiUser va orders faqat API dan keladi — tgUser endi ishlatilmaydi
-  const { apiUser, orders, refreshUser } = useTelegram();
+  const { user: tgUser, apiUser, orders, refreshUser } = useTelegram();
   const { theme, toggleTheme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Telegram WebApp dan olingan foydalanuvchi (bir martalik, memoized)
-  const tgUser = useMemo(() => getTelegramWebAppUser(), []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -70,17 +45,16 @@ export function ProfilePage() {
 
   useEffect(() => {
     console.log('👤 Profile Page Data:');
-    console.log('   - tgUser (WebApp):', tgUser);
-    console.log('   - apiUser (API):', apiUser);
-    console.log('   - orders (API):', orders);
+    console.log('   - tgUser:', tgUser);
+    console.log('   - apiUser:', apiUser);
+    console.log('   - orders:', orders);
   }, [tgUser, apiUser, orders]);
 
-  // ── API dan olinadigan ma'lumotlar ─────────────────────────────────────────
   const userBalance = Number(apiUser?.balance || 0);
   const totalStarsSpent =
     orders?.reduce((sum, order) => sum + (Number(order.amount) || 0), 0) || 0;
+
   const isAdmin = !!apiUser?.is_admin;
-  // ──────────────────────────────────────────────────────────────────────────
 
   const menuItems = [
     {
@@ -115,7 +89,6 @@ export function ProfilePage() {
         <Card className="overflow-hidden border-none shadow-lg">
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
             <div className="flex items-center gap-4 mb-5">
-              {/* Avatar — Telegram WebApp dan */}
               <div className="relative w-20 h-20 rounded-full ring-4 ring-background/80 overflow-hidden bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white text-4xl font-bold shadow-md">
                 {tgUser?.photo_url ? (
                   <img
@@ -127,19 +100,17 @@ export function ProfilePage() {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                ) : (
+                ) : null}
+                {!tgUser?.photo_url && (
                   <span className="select-none">{getAvatarLetter()}</span>
                 )}
               </div>
 
-              {/* Ism, familiya, username — Telegram WebApp dan */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-xl font-semibold truncate">
-                    {tgUser?.first_name || 'Foydalanuvchi'}{' '}
-                    {tgUser?.last_name || ''}
+                    {tgUser?.first_name || 'Foydalanuvchi'} {tgUser?.last_name || ''}
                   </h2>
-                  {/* isAdmin — API dan */}
                   {isAdmin && (
                     <Badge
                       variant="outline"
@@ -156,7 +127,6 @@ export function ProfilePage() {
               </div>
             </div>
 
-            {/* Balance — API dan | Stars — orders (API) dan */}
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-4 border border-border/50">
                 <p className="text-xs text-muted-foreground mb-1">Hisobingiz</p>
@@ -179,22 +149,18 @@ export function ProfilePage() {
           <CardContent className="pt-5 space-y-4">
             <h3 className="font-semibold text-lg mb-2">Ma'lumotlar</h3>
             <div className="space-y-3 text-sm">
-              {/* User ID — Telegram WebApp dan */}
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">User ID</span>
                 <span className="font-mono font-medium">{tgUser?.id || '—'}</span>
               </div>
-              {/* Username — Telegram WebApp dan */}
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">Username</span>
                 <span className="font-medium">{tgUser?.username || "Yo'q"}</span>
               </div>
-              {/* Buyurtmalar soni — API (orders) dan */}
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">Buyurtmalar soni</span>
                 <span className="font-medium">{orders?.length || 0} ta</span>
               </div>
-              {/* Hisob turi — Telegram WebApp dan */}
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Hisob turi</span>
                 <Badge variant={tgUser?.isTelegram ? 'default' : 'secondary'}>
@@ -213,7 +179,7 @@ export function ProfilePage() {
             return (
               <div key={i}>
                 <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0-98]"
+                  className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]"
                   onClick={item.onClick}
                 >
                   <CardContent className="pt-5">
@@ -240,8 +206,10 @@ export function ProfilePage() {
                   </CardContent>
                 </Card>
 
+                {/* Dropdown — Sozlamalar ostida chiqadi */}
                 {isSozlamalar && settingsOpen && (
                   <div className="mt-2 rounded-xl border border-border bg-card shadow-md p-3 space-y-2">
+
                     {/* Dark Mode */}
                     <div className="flex items-center justify-between p-3 rounded-lg bg-accent/40">
                       <div className="flex items-center gap-3">
@@ -252,16 +220,11 @@ export function ProfilePage() {
                         )}
                         <div>
                           <p className="text-sm font-medium">Mavzu</p>
-                          <p className="text-xs text-muted-foreground capitalize">
-                            {theme} rejimi
-                          </p>
+                          <p className="text-xs text-muted-foreground capitalize">{theme} rejimi</p>
                         </div>
                       </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTheme();
-                        }}
+                        onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
                         style={{ flexShrink: 0 }}
                         className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
                           theme === 'dark' ? 'bg-primary' : 'bg-muted'
@@ -269,8 +232,7 @@ export function ProfilePage() {
                       >
                         <span
                           style={{
-                            transform:
-                              theme === 'dark' ? 'translateX(24px)' : 'translateX(0px)',
+                            transform: theme === 'dark' ? 'translateX(24px)' : 'translateX(0px)',
                             transition: 'transform 0.3s',
                           }}
                           className="absolute top-0.5 left-0.5 w-5 h-5 bg-background rounded-full shadow-md block"
@@ -278,14 +240,11 @@ export function ProfilePage() {
                       </button>
                     </div>
 
-                    {/* Admin Panel — isAdmin API dan */}
+                    {/* Admin Panel */}
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isAdmin) {
-                          setSettingsOpen(false);
-                          navigate('/admin');
-                        }
+                        if (isAdmin) { setSettingsOpen(false); navigate('/admin'); }
                       }}
                       className={`flex items-center justify-between p-3 rounded-lg border ${
                         isAdmin
@@ -299,9 +258,7 @@ export function ProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold">Admin panel</p>
-                          <p className="text-xs text-muted-foreground">
-                            Narxlar va reytinglarni boshqarish
-                          </p>
+                          <p className="text-xs text-muted-foreground">Narxlar va reytinglarni boshqarish</p>
                         </div>
                       </div>
                       {isAdmin ? (
@@ -310,6 +267,7 @@ export function ProfilePage() {
                         <Lock className="w-4 h-4 text-muted-foreground/50" />
                       )}
                     </div>
+
                   </div>
                 )}
               </div>
@@ -333,6 +291,7 @@ export function ProfilePage() {
           <p className="text-xs mt-1">Made with ❤️ by @qiyossiz</p>
         </div>
       </div>
+
     </div>
   );
 }
