@@ -11,20 +11,15 @@ export const TelegramProvider = ({ children }) => {
   const fetchedRef = useRef(false);
 
   /* ========================= 👤 USER FETCH ========================= */
-
   const fetchUserFromApi = async (initData) => {
     try {
       setLoading(true);
 
       const url = `https://tezpremium.uz/MilliyDokon/main/get_user.php`;
-      console.log("📡 Fetching user with initData...");
 
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ initData }),
         cache: "no-cache",
       });
@@ -32,7 +27,6 @@ export const TelegramProvider = ({ children }) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      console.log("📡 API Response:", data);
 
       if (!data.ok) {
         const fallback = { balance: "0", is_admin: false };
@@ -46,7 +40,6 @@ export const TelegramProvider = ({ children }) => {
       };
 
       setApiUser(userData);
-      console.log("✅ User loaded:", userData);
       return userData;
     } catch (err) {
       console.error("❌ fetchUserFromApi error:", err);
@@ -58,14 +51,23 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
-  /* ========================= 📦 ORDERS ========================= */
-
-  const fetchOrders = async (telegramId) => {
+  /* ========================= 📦 ORDERS (initData bilan) ========================= */
+  const fetchOrders = async (initData) => {
     try {
-      const url = `https://tezpremium.uz/MilliyDokon/main/orders.php?user_id=${telegramId}`;
-      console.log("📦 Fetching orders:", url);
+      const url = `https://tezpremium.uz/MilliyDokon/main/orders.php`;
 
-      const res = await fetch(url);
+      console.log("📦 Fetching orders with initData...");
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ initData }),
+        cache: "no-cache",
+      });
+
       const data = await res.json();
       console.log("📦 Orders response:", data);
 
@@ -76,20 +78,27 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
-  /* ========================= 💳 PAYMENTS ========================= */
-
-  const fetchPayments = async (telegramId) => {
+  /* ========================= 💳 PAYMENTS (initData bilan) ========================= */
+  const fetchPayments = async (initData) => {
     try {
-      const url = `https://tezpremium.uz/MilliyDokon/main/payments.php?user_id=${telegramId}`;
-      console.log("💳 Fetching payments:", url);
+      const url = `https://tezpremium.uz/MilliyDokon/main/payments.php`;
 
-      const res = await fetch(url);
+      console.log("💳 Fetching payments with initData...");
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ initData }),
+        cache: "no-cache",
+      });
+
       const data = await res.json();
       console.log("💳 Payments response:", data);
 
-      setPayments(
-        data.ok && Array.isArray(data.payments) ? data.payments : []
-      );
+      setPayments(data.ok && Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
       console.error("❌ fetchPayments error:", err);
       setPayments([]);
@@ -97,28 +106,25 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= ⭐ ORDER ========================= */
-
   const createOrder = async ({ amount, sent, type, overall }) => {
     try {
       if (!user?.id) throw new Error("User topilmadi");
 
-      const url =
-        `https://m4746.myxvest.ru/webapp/order.php` +
+      const telegram = window.Telegram?.WebApp;
+      const initData = telegram?.initData || "";
+
+      const url = `https://m4746.myxvest.ru/webapp/order.php` +
         `?user_id=${user.id}&amount=${amount}&sent=@${sent.replace("@", "")}` +
         `&type=${type}&overall=${overall}`;
-
-      console.log("⭐ Creating order:", url);
 
       const res = await fetch(url);
       const data = await res.json();
 
       if (data.ok) {
-        const telegram = window.Telegram?.WebApp;
-        await fetchUserFromApi(telegram?.initData || "");
-        await fetchOrders(user.id);
+        await fetchUserFromApi(initData);
+        await fetchOrders(initData);        // ← initData
         return { ok: true };
       }
-
       return { ok: false };
     } catch (err) {
       console.error("❌ createOrder error:", err);
@@ -127,25 +133,23 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= 💎 PREMIUM ========================= */
-
   const createPremiumOrder = async ({ months, sent, overall }) => {
     try {
       if (!user?.id) throw new Error("User topilmadi");
 
-      const url =
-        `https://m4746.myxvest.ru/webapp/premium.php` +
+      const telegram = window.Telegram?.WebApp;
+      const initData = telegram?.initData || "";
+
+      const url = `https://m4746.myxvest.ru/webapp/premium.php` +
         `?user_id=${user.id}&amount=${months}&sent=${sent.replace("@", "")}` +
         `&overall=${overall}`;
-
-      console.log("💎 Creating premium order:", url);
 
       const res = await fetch(url);
       const data = await res.json();
 
       if (data.ok) {
-        const telegram = window.Telegram?.WebApp;
-        await fetchUserFromApi(telegram?.initData || "");
-        await fetchOrders(user.id);
+        await fetchUserFromApi(initData);
+        await fetchOrders(initData);
         return { ok: true, ...data };
       }
 
@@ -157,26 +161,22 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= 🎁 GIFT ORDER ========================= */
-
   const createGiftOrder = async ({ giftId, sent, price }) => {
     try {
       if (!user?.id) throw new Error("User topilmadi");
 
       const balance = Number(apiUser?.balance || 0);
-
       if (balance < price) {
         return { ok: false, message: "Balans yetarli emas" };
       }
 
+      const telegram = window.Telegram?.WebApp;
+      const initData = telegram?.initData || "";
+
       const cleanUsername = sent.startsWith("@") ? sent : `@${sent}`;
 
-      const url =
-        `https://m4746.myxvest.ru/webapp/gifting.php` +
-        `?user_id=${user.id}` +
-        `&gift_id=${giftId}` +
-        `&sent=${encodeURIComponent(cleanUsername)}`;
-
-      console.log("🎁 Creating gift order:", url);
+      const url = `https://m4746.myxvest.ru/webapp/gifting.php` +
+        `?user_id=${user.id}&gift_id=${giftId}&sent=${encodeURIComponent(cleanUsername)}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -185,9 +185,8 @@ export const TelegramProvider = ({ children }) => {
         return { ok: false, message: data?.message || "Gift xatosi" };
       }
 
-      const telegram = window.Telegram?.WebApp;
-      await fetchUserFromApi(telegram?.initData || "");
-      await fetchOrders(user.id);
+      await fetchUserFromApi(initData);
+      await fetchOrders(initData);
 
       return { ok: true, data };
     } catch (e) {
@@ -197,30 +196,25 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= 🔄 REFRESH ========================= */
-
   const refreshUser = async () => {
-    if (user?.id) {
-      const telegram = window.Telegram?.WebApp;
-      const initData = telegram?.initData || "";
+    const telegram = window.Telegram?.WebApp;
+    const initData = telegram?.initData || "";
 
-      console.log("🔄 Refreshing user...");
-
+    if (initData) {
+      console.log("🔄 Refreshing user with initData...");
       await fetchUserFromApi(initData);
-      await fetchOrders(user.id);
-      await fetchPayments(user.id);
+      await fetchOrders(initData);
+      await fetchPayments(initData);
     }
   };
 
   /* ========================= 👤 USERNAME CHECK ========================= */
-
   const checkUsername = async (username) => {
     try {
       if (!username) return { ok: false };
 
       const clean = username.replace("@", "");
       const url = `https://tezpremium.uz/starsapi/user.php?username=${clean}`;
-
-      console.log("👤 Checking username:", url);
 
       const res = await fetch(url);
       const data = await res.json();
@@ -236,7 +230,6 @@ export const TelegramProvider = ({ children }) => {
           },
         };
       }
-
       return { ok: false };
     } catch (err) {
       console.error("❌ checkUsername error:", err);
@@ -245,10 +238,8 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= TELEGRAM USER ========================= */
-
   const getTelegramUser = () => {
     const tg = window.Telegram?.WebApp;
-
     if (!tg) return null;
 
     if (tg.initDataUnsafe?.user?.id) {
@@ -264,12 +255,10 @@ export const TelegramProvider = ({ children }) => {
         console.error("❌ parse error", e);
       }
     }
-
     return null;
   };
 
   /* ========================= INIT ========================= */
-
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -277,10 +266,7 @@ export const TelegramProvider = ({ children }) => {
     const telegram = window.Telegram?.WebApp;
     const tgUser = getTelegramUser();
 
-    const isTelegramEnv =
-      telegram &&
-      typeof telegram.initData === "string" &&
-      telegram.initData.length > 0;
+    const isTelegramEnv = telegram && typeof telegram.initData === "string" && telegram.initData.length > 0;
 
     if (telegram) {
       telegram.ready();
@@ -307,15 +293,18 @@ export const TelegramProvider = ({ children }) => {
 
       setUser(realUser);
 
+      const initData = telegram.initData;
+
       (async () => {
-        await fetchUserFromApi(telegram.initData);
-        await fetchOrders(tgUser.id);
-        await fetchPayments(tgUser.id);
+        await fetchUserFromApi(initData);
+        await fetchOrders(initData);      // ← initData
+        await fetchPayments(initData);    // ← initData
       })();
     } else {
       console.warn("⚠️ DEV MODE");
 
       const fakeId = "7521806735";
+      const fakeInitData = ""; // yoki test initData qo'yishingiz mumkin
 
       setUser({
         id: fakeId,
@@ -327,9 +316,9 @@ export const TelegramProvider = ({ children }) => {
       });
 
       (async () => {
-        await fetchUserFromApi("");
-        await fetchOrders(fakeId);
-        await fetchPayments(fakeId);
+        await fetchUserFromApi(fakeInitData);
+        await fetchOrders(fakeInitData);
+        await fetchPayments(fakeInitData);
       })();
     }
   }, []);
