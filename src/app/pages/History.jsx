@@ -198,7 +198,6 @@ const MODAL_STYLES = `
     padding:14px 22px 0; font-family:'JetBrains Mono',monospace; letter-spacing:.4px;
   }
 
-  /* TON badge in amount section */
   .rcpt-ton-badge {
     margin-top:8px;
     display:inline-flex; align-items:center; gap:6px;
@@ -282,14 +281,11 @@ function PaymentReceiptModal({ payment, onClose }) {
   const handlePay = () => {
     const link = payment.link;
     if (!link) return;
-    const provider = payment.type?.toLowerCase();
     try {
-      if (provider === 'tonkeeper') {
-        if (tg?.openLink) tg.openLink(link, { try_instant_view: false });
-        else window.location.href = link;
+      if (tg?.openLink) {
+        tg.openLink(link, { try_instant_view: false });
       } else {
-        if (tg?.openLink) tg.openLink(link, { try_instant_view: false });
-        else window.location.href = link;
+        window.location.href = link;
       }
     } catch {
       window.location.href = link;
@@ -305,7 +301,6 @@ function PaymentReceiptModal({ payment, onClose }) {
   const isPending = statusKey === 'pending';
   const hasLink = !!payment.link;
 
-  // Parse date
   const parseDate = (dateStr) => {
     try {
       if (!dateStr) return new Date();
@@ -343,22 +338,16 @@ function PaymentReceiptModal({ payment, onClose }) {
             transform: visible ? 'translateY(0)' : 'translateY(40px)',
           }}
         >
-          {/* Top accent bar */}
           <div className="rcpt-top-bar" style={{ background: cfg.topBar }} />
           <div className="rcpt-handle" />
           <button className="rcpt-close" onClick={handleClose}>✕</button>
 
-          {/* Header */}
           <div className="rcpt-header">
             <div
               className="rcpt-logo"
               style={{ background: cfg.logoBg, boxShadow: cfg.logoShadow }}
             >
-              <img
-                src={cfg.logo}
-                alt={typeKey}
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
+              <img src={cfg.logo} alt={typeKey} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
             <div>
               <h2>{cfg.title}</h2>
@@ -366,7 +355,6 @@ function PaymentReceiptModal({ payment, onClose }) {
             </div>
           </div>
 
-          {/* Amount */}
           <div className="rcpt-amount">
             <div className="rcpt-amount-label">To'lov miqdori</div>
             <div className="rcpt-amount-val">
@@ -389,7 +377,6 @@ function PaymentReceiptModal({ payment, onClose }) {
             )}
           </div>
 
-          {/* Rows */}
           <div className="rcpt-rows">
             <div className="rcpt-row">
               <span className="rcpt-row-k">Qabul qiluvchi</span>
@@ -416,23 +403,18 @@ function PaymentReceiptModal({ payment, onClose }) {
             <div className="rcpt-row">
               <span className="rcpt-row-k">Holat</span>
               <span className="rcpt-badge" style={{ background: s.bg, color: s.color }}>
-                <span
-                  className={`rcpt-dot ${statusKey === 'pending' ? 'pulse' : ''}`}
-                  style={{ background: s.dot }}
-                />
+                <span className={`rcpt-dot ${statusKey === 'pending' ? 'pulse' : ''}`} style={{ background: s.dot }} />
                 {s.label}
               </span>
             </div>
           </div>
 
-          {/* Scissors divider */}
           <div className="rcpt-scissors">
             <div className="rcpt-dash" />
             <span className="rcpt-scissors-icon">✂</span>
             <div className="rcpt-dash" />
           </div>
 
-          {/* Actions */}
           <div className="rcpt-actions">
             {isPending && hasLink && (
               <button
@@ -442,11 +424,7 @@ function PaymentReceiptModal({ payment, onClose }) {
               >
                 <div className="rcpt-btn-left">
                   <div className="rcpt-btn-icon">
-                    <img
-                      src={cfg.logo}
-                      alt={typeKey}
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
+                    <img src={cfg.logo} alt={typeKey} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   </div>
                   <div>
                     <div className="rcpt-btn-title">{cfg.btnLabel}</div>
@@ -512,31 +490,55 @@ export function HistoryPage() {
   const [filter, setFilter] = useState('all');
   const [selectedPayment, setSelectedPayment] = useState(null);
 
-  /* ── FETCH ── */
+  /* ── FETCH PAYMENTS WITH POST + initData ── */
   useEffect(() => {
-    if (!user?.id) {
-      setError('Foydalanuvchi ID topilmadi');
+    const tg = window.Telegram?.WebApp;
+
+    if (!tg?.initData) {
+      setError("Telegram initData topilmadi. Iltimos, bot orqali qayta kiriting.");
       setLoading(false);
       return;
     }
+
     const fetchPayments = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `https://tezpremium.uz/MilliyDokon/main/payments.php?user_id=${user.id}`
+        setError(null);
+
+        const response = await fetch(
+          "https://tezpremium.uz/MilliyDokon/main/payments.php",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              initData: tg.initData,           // ← Asosiy o‘zgarish
+            }),
+          }
         );
-        if (!res.ok) throw new Error(`Server xatosi: ${res.status}`);
-        const data = await res.json();
-        if (data.ok !== true) throw new Error(data.description || data.message || 'API xatosi');
-        setPayments(data.payments || []);
-      } catch (e) {
-        setError(e.message || "Ma'lumotlarni yuklab bo'lmadi");
+
+        if (!response.ok) {
+          throw new Error(`Server xatosi: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.ok !== true) {
+          throw new Error(data.description || data.message || "API javobi xato");
+        }
+
+        setPayments(Array.isArray(data.payments) ? data.payments : []);
+      } catch (err) {
+        console.error("Payments fetch error:", err);
+        setError(err.message || "To'lovlar tarixini yuklab bo'lmadi");
       } finally {
         setLoading(false);
       }
     };
+
     fetchPayments();
-  }, [user?.id]);
+  }, []); // initData bir marta yuklanadi
 
   /* ── HELPERS ── */
   const getStatusConfig = (status) => {
@@ -572,7 +574,7 @@ export function HistoryPage() {
     return status === filter;
   });
 
-  /* ── LOADING / ERROR ── */
+  /* ── LOADING / ERROR STATES ── */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -652,7 +654,7 @@ export function HistoryPage() {
         )}
       </div>
 
-      {/* Receipt Modal — payment.jsx uslubida */}
+      {/* Receipt Modal */}
       {selectedPayment && (
         <PaymentReceiptModal
           payment={selectedPayment}
