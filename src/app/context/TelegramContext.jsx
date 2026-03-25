@@ -14,10 +14,7 @@ export const TelegramProvider = ({ children }) => {
   const fetchUserFromApi = async (initData) => {
     try {
       setLoading(true);
-
-      const url = `https://tezpremium.uz/MilliyDokon/main/get_user.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/get_user.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ initData }),
@@ -25,7 +22,6 @@ export const TelegramProvider = ({ children }) => {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
 
       if (!data.ok) {
@@ -34,11 +30,7 @@ export const TelegramProvider = ({ children }) => {
         return fallback;
       }
 
-      const userData = {
-        ...data.data,
-        is_admin: !!data.is_admin,
-      };
-
+      const userData = { ...data.data, is_admin: !!data.is_admin };
       setApiUser(userData);
       return userData;
     } catch (err) {
@@ -54,18 +46,12 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= 📦 ORDERS ========================= */
   const fetchOrders = async (initData) => {
     try {
-      const url = `https://tezpremium.uz/MilliyDokon/main/orders.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ initData }),
         cache: "no-cache",
       });
-
       const data = await res.json();
       setOrders(data.ok && Array.isArray(data.orders) ? data.orders : []);
     } catch (err) {
@@ -77,18 +63,12 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= 💳 PAYMENTS ========================= */
   const fetchPayments = async (initData) => {
     try {
-      const url = `https://tezpremium.uz/MilliyDokon/main/payments.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/payments.php", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ initData }),
         cache: "no-cache",
       });
-
       const data = await res.json();
       setPayments(data.ok && Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
@@ -97,17 +77,15 @@ export const TelegramProvider = ({ children }) => {
     }
   };
 
-  /* ========================= ⭐ CREATE ORDER (POST + initData) ========================= */
-  const createOrder = async ({ amount, sent, type, overall }) => {
+  /* ========================= ⭐ CREATE STARS ORDER ========================= */
+  const createOrder = async ({ amount, sent, type = 'stars', overall }) => {
     try {
       const telegram = window.Telegram?.WebApp;
       const initData = telegram?.initData || "";
 
       if (!initData) throw new Error("initData topilmadi");
 
-      const url = `https://m4746.myxvest.ru/webapp/order.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders/stars.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -124,16 +102,16 @@ export const TelegramProvider = ({ children }) => {
       if (data.ok) {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
-        return { ok: true };
+        return { ok: true, ...data };
       }
-      return { ok: false, message: data.message };
+      return { ok: false, message: data.message || "Buyurtma yaratilmadi" };
     } catch (err) {
       console.error("❌ createOrder error:", err);
-      return { ok: false };
+      return { ok: false, message: err.message };
     }
   };
 
-  /* ========================= 💎 CREATE PREMIUM ORDER (POST + initData) ========================= */
+  /* ========================= 💎 CREATE PREMIUM ORDER ========================= */
   const createPremiumOrder = async ({ months, sent, overall }) => {
     try {
       const telegram = window.Telegram?.WebApp;
@@ -141,14 +119,12 @@ export const TelegramProvider = ({ children }) => {
 
       if (!initData) throw new Error("initData topilmadi");
 
-      const url = `https://m4746.myxvest.ru/webapp/premium.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders/premium.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           initData,
-          months,           // amount o‘rniga months
+          months,
           sent: sent.replace("@", ""),
           overall,
         }),
@@ -161,21 +137,18 @@ export const TelegramProvider = ({ children }) => {
         await fetchOrders(initData);
         return { ok: true, ...data };
       }
-
-      return { ok: false, message: data.message };
-    } catch (e) {
-      console.error("❌ createPremiumOrder error:", e);
-      return { ok: false, message: e.message };
+      return { ok: false, message: data.message || "Premium buyurtma yaratilmadi" };
+    } catch (err) {
+      console.error("❌ createPremiumOrder error:", err);
+      return { ok: false, message: err.message };
     }
   };
 
-  /* ========================= 🎁 CREATE GIFT ORDER (POST + initData) ========================= */
+  /* ========================= 🎁 CREATE GIFT ORDER ========================= */
   const createGiftOrder = async ({ giftId, sent, price }) => {
     try {
       const balance = Number(apiUser?.balance || 0);
-      if (balance < price) {
-        return { ok: false, message: "Balans yetarli emas" };
-      }
+      if (balance < price) return { ok: false, message: "Balans yetarli emas" };
 
       const telegram = window.Telegram?.WebApp;
       const initData = telegram?.initData || "";
@@ -184,9 +157,7 @@ export const TelegramProvider = ({ children }) => {
 
       const cleanUsername = sent.startsWith("@") ? sent : `@${sent}`;
 
-      const url = `https://m4746.myxvest.ru/webapp/gifting.php`;
-
-      const res = await fetch(url, {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders/gifting.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -204,7 +175,6 @@ export const TelegramProvider = ({ children }) => {
 
       await fetchUserFromApi(initData);
       await fetchOrders(initData);
-
       return { ok: true, data };
     } catch (e) {
       console.error("❌ createGiftOrder error:", e);
@@ -218,22 +188,18 @@ export const TelegramProvider = ({ children }) => {
     const initData = telegram?.initData || "";
 
     if (initData) {
-      console.log("🔄 Refreshing user with initData...");
       await fetchUserFromApi(initData);
       await fetchOrders(initData);
       await fetchPayments(initData);
     }
   };
 
-  /* ========================= 👤 USERNAME CHECK (bu o‘zgarmadi) ========================= */
+  /* ========================= USERNAME CHECK ========================= */
   const checkUsername = async (username) => {
     try {
       if (!username) return { ok: false };
-
       const clean = username.replace("@", "");
-      const url = `https://tezpremium.uz/starsapi/user.php?username=${clean}`;
-
-      const res = await fetch(url);
+      const res = await fetch(`https://tezpremium.uz/starsapi/user.php?username=${clean}`);
       const data = await res.json();
 
       if (data.username) {
@@ -259,9 +225,7 @@ export const TelegramProvider = ({ children }) => {
     const tg = window.Telegram?.WebApp;
     if (!tg) return null;
 
-    if (tg.initDataUnsafe?.user?.id) {
-      return tg.initDataUnsafe.user;
-    }
+    if (tg.initDataUnsafe?.user?.id) return tg.initDataUnsafe.user;
 
     if (tg.initData) {
       try {
@@ -288,12 +252,6 @@ export const TelegramProvider = ({ children }) => {
     if (telegram) {
       telegram.ready();
       telegram.expand();
-
-      const startParam = telegram?.initDataUnsafe?.start_param;
-      if (startParam) {
-        console.log("🚀 start_param:", startParam);
-        window.__tgStartParam = startParam;
-      }
     }
 
     if (isTelegramEnv && tgUser?.id) {
@@ -311,7 +269,6 @@ export const TelegramProvider = ({ children }) => {
       setUser(realUser);
 
       const initData = telegram.initData;
-
       (async () => {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
@@ -319,9 +276,7 @@ export const TelegramProvider = ({ children }) => {
       })();
     } else {
       console.warn("⚠️ DEV MODE");
-
       const fakeId = "7521806735";
-      const fakeInitData = ""; // test uchun kerak bo‘lsa haqiqiy initData qo‘ying
 
       setUser({
         id: fakeId,
@@ -333,9 +288,9 @@ export const TelegramProvider = ({ children }) => {
       });
 
       (async () => {
-        await fetchUserFromApi(fakeInitData);
-        await fetchOrders(fakeInitData);
-        await fetchPayments(fakeInitData);
+        await fetchUserFromApi("");
+        await fetchOrders("");
+        await fetchPayments("");
       })();
     }
   }, []);
