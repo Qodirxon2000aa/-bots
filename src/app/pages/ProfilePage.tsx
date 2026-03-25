@@ -37,23 +37,35 @@ export function ProfilePage() {
     }
   };
 
+  // Telegram WebApp dan to'g'ridan-to'g'ri olish
+  const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+  const displayName = telegramUser 
+    ? `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim() || "Foydalanuvchi"
+    : (tgUser?.first_name ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim() : "Foydalanuvchi");
+
+  const displayUsername = telegramUser?.username 
+    ? `@${telegramUser.username}` 
+    : (tgUser?.username || "Username yo'q");
+
+  const avatarUrl = telegramUser?.photo_url || tgUser?.photo_url;
+
   const getAvatarLetter = () => {
+    if (telegramUser?.first_name) return telegramUser.first_name[0].toUpperCase();
     if (tgUser?.first_name) return tgUser.first_name[0].toUpperCase();
-    if (tgUser?.username) return tgUser.username.replace('@', '')[0].toUpperCase();
+    if (telegramUser?.username) return telegramUser.username[0].toUpperCase();
     return 'U';
   };
 
   useEffect(() => {
     console.log('👤 Profile Page Data:');
-    console.log('   - tgUser:', tgUser);
+    console.log('   - Telegram WebApp User:', telegramUser);
+    console.log('   - Context tgUser:', tgUser);
     console.log('   - apiUser:', apiUser);
-    console.log('   - orders:', orders);
-  }, [tgUser, apiUser, orders]);
+  }, [telegramUser, tgUser, apiUser]);
 
   const userBalance = Number(apiUser?.balance || 0);
-  const totalStarsSpent =
-    orders?.reduce((sum, order) => sum + (Number(order.amount) || 0), 0) || 0;
-
+  const totalStarsSpent = orders?.reduce((sum, order) => sum + (Number(order.amount) || 0), 0) || 0;
   const isAdmin = !!apiUser?.is_admin;
 
   const menuItems = [
@@ -90,18 +102,16 @@ export function ProfilePage() {
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
             <div className="flex items-center gap-4 mb-5">
               <div className="relative w-20 h-20 rounded-full ring-4 ring-background/80 overflow-hidden bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white text-4xl font-bold shadow-md">
-                {tgUser?.photo_url ? (
+                {avatarUrl ? (
                   <img
-                    src={tgUser.photo_url}
-                    alt={`${tgUser.first_name || 'Foydalanuvchi'} avatar`}
+                    src={avatarUrl}
+                    alt="Avatar"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.log('❌ Avatar yuklanmadi:', tgUser.photo_url);
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                ) : null}
-                {!tgUser?.photo_url && (
+                ) : (
                   <span className="select-none">{getAvatarLetter()}</span>
                 )}
               </div>
@@ -109,7 +119,7 @@ export function ProfilePage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-xl font-semibold truncate">
-                    {tgUser?.first_name || 'Foydalanuvchi'} {tgUser?.last_name || ''}
+                    {displayName}
                   </h2>
                   {isAdmin && (
                     <Badge
@@ -122,7 +132,7 @@ export function ProfilePage() {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {tgUser?.username || "Username yo'q"}
+                  {displayUsername}
                 </p>
               </div>
             </div>
@@ -151,11 +161,13 @@ export function ProfilePage() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">User ID</span>
-                <span className="font-mono font-medium">{tgUser?.id || '—'}</span>
+                <span className="font-mono font-medium">
+                  {telegramUser?.id || tgUser?.id || '—'}
+                </span>
               </div>
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">Username</span>
-                <span className="font-medium">{tgUser?.username || "Yo'q"}</span>
+                <span className="font-medium">{displayUsername}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border/60">
                 <span className="text-muted-foreground">Buyurtmalar soni</span>
@@ -206,10 +218,9 @@ export function ProfilePage() {
                   </CardContent>
                 </Card>
 
-                {/* Dropdown — Sozlamalar ostida chiqadi */}
+                {/* Sozlamalar dropdown */}
                 {isSozlamalar && settingsOpen && (
                   <div className="mt-2 rounded-xl border border-border bg-card shadow-md p-3 space-y-2">
-
                     {/* Dark Mode */}
                     <div className="flex items-center justify-between p-3 rounded-lg bg-accent/40">
                       <div className="flex items-center gap-3">
@@ -225,7 +236,6 @@ export function ProfilePage() {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-                        style={{ flexShrink: 0 }}
                         className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
                           theme === 'dark' ? 'bg-primary' : 'bg-muted'
                         }`}
@@ -244,7 +254,10 @@ export function ProfilePage() {
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isAdmin) { setSettingsOpen(false); navigate('/admin'); }
+                        if (isAdmin) {
+                          setSettingsOpen(false);
+                          navigate('/admin');
+                        }
                       }}
                       className={`flex items-center justify-between p-3 rounded-lg border ${
                         isAdmin
@@ -267,7 +280,6 @@ export function ProfilePage() {
                         <Lock className="w-4 h-4 text-muted-foreground/50" />
                       )}
                     </div>
-
                   </div>
                 )}
               </div>
@@ -291,7 +303,6 @@ export function ProfilePage() {
           <p className="text-xs mt-1">Made with ❤️ by @qiyossiz</p>
         </div>
       </div>
-
     </div>
   );
 }
