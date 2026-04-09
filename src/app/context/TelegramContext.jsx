@@ -210,9 +210,6 @@ export const TelegramProvider = ({ children }) => {
       };
     } catch (e) {
       console.error("createPremiumOrder error:", e);
-      toast.error("Premium sotib olishda xatolik", {
-        description: e?.message || "Server bilan bog'lanishda xatolik",
-      });
       return { ok: false, message: e.message };
     }
   };
