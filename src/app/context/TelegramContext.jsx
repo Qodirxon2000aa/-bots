@@ -23,10 +23,25 @@ export const TelegramProvider = ({ children }) => {
     if (initDataRef.current) return initDataRef.current;
 
     try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const searchInitData = searchParams.get("tgWebAppData");
+      if (searchInitData) {
+        const decoded = decodeURIComponent(searchInitData);
+        initDataRef.current = decoded;
+        return decoded;
+      }
+
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const hashInitData = hashParams.get("tgWebAppData");
       if (hashInitData) {
         const decoded = decodeURIComponent(hashInitData);
+        initDataRef.current = decoded;
+        return decoded;
+      }
+
+      const urlMatch = window.location.href.match(/[?#&]tgWebAppData=([^&]+)/);
+      if (urlMatch?.[1]) {
+        const decoded = decodeURIComponent(urlMatch[1]);
         initDataRef.current = decoded;
         return decoded;
       }
@@ -94,7 +109,7 @@ export const TelegramProvider = ({ children }) => {
 
       const cleanSent = sent.replace("@", "").trim();
 
-      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/orders/stars.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
