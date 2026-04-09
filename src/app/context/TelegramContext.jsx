@@ -188,7 +188,11 @@ export const TelegramProvider = ({ children }) => {
         throw new Error(data?.message || `HTTP ${res.status}`);
       }
 
-      const isSuccess = data?.ok === true || !!data?.order_id;
+      const okValue = data?.ok;
+      const isOkFlag =
+        okValue === true || okValue === "true" || okValue === 1 || okValue === "1";
+      const resolvedOrderId = data?.order_id || data?.data?.order_id || null;
+      const isSuccess = isOkFlag || !!resolvedOrderId;
       if (isSuccess) {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
@@ -196,7 +200,7 @@ export const TelegramProvider = ({ children }) => {
         return { 
           ok: true, 
           message: data?.message || "Premium order created successfully",
-          order_id: data.order_id 
+          order_id: resolvedOrderId,
         };
       }
 

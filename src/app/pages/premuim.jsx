@@ -120,7 +120,7 @@ export default function Premium() {
         overall: totalCost,
       });
 
-      if (result.ok) {
+      if (result.ok || result.order_id) {
         toast.success("To'lov muvaffaqiyatli!", {
           description: `${selectedMonths} oylik Premium @${username} uchun buyurtma qilindi`,
         });
