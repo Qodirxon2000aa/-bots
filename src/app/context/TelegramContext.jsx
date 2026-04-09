@@ -152,7 +152,8 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= CREATE PREMIUM ORDER ========================= */
   const createPremiumOrder = async ({ months, sent, overall }) => {
     try {
-      const initData = getInitData();
+      const telegramInitData = window.Telegram?.WebApp?.initData?.trim();
+      const initData = telegramInitData || initDataRef.current || "";
       if (!initData) {
         toast.error("Telegram initData topilmadi");
         return { ok: false, message: "initData topilmadi" };
@@ -160,21 +161,17 @@ export const TelegramProvider = ({ children }) => {
 
       const cleanSent = sent.replace("@", "").trim();
       const monthsNumber = Number(months) || 0;
-      const periodText = monthsNumber > 0 ? `${monthsNumber} oy` : String(months || "");
+      if (![3, 6, 12].includes(monthsNumber)) {
+        return { ok: false, message: "Noto'g'ri premium muddat (3/6/12)" };
+      }
 
       const res = await fetch("https://tezpremium.uz/MilliyDokon/orders/premium.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          ...buildAuthPayload(initData),
-          months: monthsNumber,
-          period: monthsNumber,
-          period_months: monthsNumber,
-          period_text: periodText,
+          initData,
           amount: monthsNumber,
           sent: cleanSent,
-          type: "premium",
-          turi: "Premium",
           overall,
         }),
       });
