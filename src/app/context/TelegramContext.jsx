@@ -10,6 +10,32 @@ export const TelegramProvider = ({ children }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const fetchedRef = useRef(false);
+  const initDataRef = useRef("");
+
+  const getInitData = () => {
+    const telegram = window.Telegram?.WebApp;
+    const directInitData = telegram?.initData?.trim();
+    if (directInitData) {
+      initDataRef.current = directInitData;
+      return directInitData;
+    }
+
+    if (initDataRef.current) return initDataRef.current;
+
+    try {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashInitData = hashParams.get("tgWebAppData");
+      if (hashInitData) {
+        const decoded = decodeURIComponent(hashInitData);
+        initDataRef.current = decoded;
+        return decoded;
+      }
+    } catch (e) {
+      console.error("hash initData parse error:", e);
+    }
+
+    return "";
+  };
 
   /* ========================= USER FETCH ========================= */
   const fetchUserFromApi = async (initData) => {
@@ -44,8 +70,7 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= CREATE ORDER (Stars) ========================= */
   const createOrder = async ({ amount, sent, type, overall }) => {
     try {
-      const telegram = window.Telegram?.WebApp;
-      const initData = telegram?.initData || "";
+      const initData = getInitData();
 
       if (!initData) {
         toast.error("Telegram initData topilmadi");
@@ -70,12 +95,7 @@ export const TelegramProvider = ({ children }) => {
 
       const data = await res.json();
 
-      // Server muvaffaqiyatli javob qaytarsa
       if (data.ok === true) {
-        toast.success(`${amount} Stars muvaffaqiyatli yuborildi!`, {
-          description: data.message || "Order created successfully"
-        });
-
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
 
@@ -86,7 +106,6 @@ export const TelegramProvider = ({ children }) => {
         };
       }
 
-      // Server xato qaytarsa
       return { 
         ok: false, 
         message: data.message || "Buyurtma yaratilmadi" 
@@ -103,8 +122,7 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= CREATE PREMIUM ORDER ========================= */
   const createPremiumOrder = async ({ months, sent, overall }) => {
     try {
-      const telegram = window.Telegram?.WebApp;
-      const initData = telegram?.initData || "";
+      const initData = getInitData();
       if (!initData) {
         toast.error("Telegram initData topilmadi");
         return { ok: false, message: "initData topilmadi" };
@@ -127,10 +145,6 @@ export const TelegramProvider = ({ children }) => {
       const data = await res.json();
 
       if (data.ok === true) {
-        toast.success(`Premium ${months} oyga muvaffaqiyatli sotib olindi!`, {
-          description: data.message || "Order created successfully"
-        });
-
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
 
@@ -229,8 +243,7 @@ export const TelegramProvider = ({ children }) => {
 
   /* ========================= REFRESH ========================= */
   const refreshUser = async () => {
-    const telegram = window.Telegram?.WebApp;
-    const initData = telegram?.initData || "";
+    const initData = getInitData();
     if (initData) {
       await fetchUserFromApi(initData);
       await fetchOrders(initData);
@@ -311,6 +324,7 @@ export const TelegramProvider = ({ children }) => {
       setUser(realUser);
 
       const initData = telegram.initData;
+      initDataRef.current = initData;
       (async () => {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);

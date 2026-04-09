@@ -13,7 +13,7 @@ import { SummaryCard } from '@/app/components/SummaryCard2';
 
 export default function Premium() {
   const navigate = useNavigate();
-  const { apiUser, user, createOrder, refreshUser, checkUsername } = useTelegram();
+  const { apiUser, user, createPremiumOrder, refreshUser, checkUsername } = useTelegram();
 
   const [username, setUsername] = useState('');
   const [stars, setStars] = useState(300); // 3 oylik uchun 300 stars
@@ -101,6 +101,7 @@ export default function Premium() {
     : (stars * currentRate);
 
   const hasEnoughBalance = userBalance >= totalCost;
+  const selectedMonths = Number.parseInt(selectedPreset, 10) || 0;
 
   const handleConfirmPayment = async () => {
     if (!username || !stars) return;
@@ -113,17 +114,15 @@ export default function Premium() {
 
     setIsProcessing(true);
     try {
-      const result = await createOrder({
-        amount: stars,
+      const result = await createPremiumOrder({
+        months: selectedMonths,
         sent: username,
-        type: 'stars',
         overall: totalCost,
-        // package: selectedPreset,   // agar backendda kerak bo'lsa qo'shish mumkin
       });
 
       if (result.ok) {
         toast.success("To'lov muvaffaqiyatli!", {
-          description: `${stars} stars @${username} ga yuborildi`,
+          description: `${selectedMonths} oylik Premium @${username} uchun buyurtma qilindi`,
         });
         await refreshUser();
         setShowConfirmDialog(false);
