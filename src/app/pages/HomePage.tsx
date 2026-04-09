@@ -165,7 +165,7 @@ export function HomePage() {
               <div className="w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center mx-auto mb-3">
                 <Gift className="w-6 h-6 text-pink-600" />
               </div>
-              <p className="text-sm font-medium">Gifts</p>
+              <p className="text-sm font-medium">Giiiifts</p>
             </CardContent>
           </Card>
         </div>

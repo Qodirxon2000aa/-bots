@@ -37,13 +37,28 @@ export const TelegramProvider = ({ children }) => {
     return "";
   };
 
+  const buildAuthPayload = (initDataArg) => {
+    const resolved = (initDataArg || getInitData() || "").trim();
+    return {
+      initData: resolved,
+      init_data: resolved,
+    };
+  };
+
   /* ========================= USER FETCH ========================= */
   const fetchUserFromApi = async (initData) => {
     try {
+      const authPayload = buildAuthPayload(initData);
+      if (!authPayload.initData) {
+        const fallback = { balance: "0", is_admin: false };
+        setApiUser(fallback);
+        return fallback;
+      }
+
       const res = await fetch("https://tezpremium.uz/MilliyDokon/main/get_user.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify(authPayload),
         cache: "no-cache",
       });
 
@@ -83,7 +98,7 @@ export const TelegramProvider = ({ children }) => {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          initData,
+          ...buildAuthPayload(initData),
           amount,
           sent: cleanSent,
           type,        // 'stars'
@@ -132,7 +147,7 @@ export const TelegramProvider = ({ children }) => {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          initData,
+          ...buildAuthPayload(initData),
           months,
           sent: sent.replace("@", "").trim(),
           type: "premium",
@@ -169,10 +184,16 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= FETCH ORDERS ========================= */
   const fetchOrders = async (initData) => {
     try {
+      const authPayload = buildAuthPayload(initData);
+      if (!authPayload.initData) {
+        setOrders([]);
+        return;
+      }
+
       const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify(authPayload),
         cache: "no-cache",
       });
       const data = await res.json();
@@ -186,10 +207,16 @@ export const TelegramProvider = ({ children }) => {
   /* ========================= FETCH PAYMENTS ========================= */
   const fetchPayments = async (initData) => {
     try {
+      const authPayload = buildAuthPayload(initData);
+      if (!authPayload.initData) {
+        setPayments([]);
+        return;
+      }
+
       const res = await fetch("https://tezpremium.uz/MilliyDokon/main/payments.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify(authPayload),
         cache: "no-cache",
       });
       const data = await res.json();
@@ -209,15 +236,14 @@ export const TelegramProvider = ({ children }) => {
         return { ok: false, message: "Balans yetarli emas" };
       }
 
-      const telegram = window.Telegram?.WebApp;
-      const initData = telegram?.initData || "";
+      const initData = getInitData();
       if (!initData) throw new Error("initData topilmadi");
 
       const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          initData,
+          ...buildAuthPayload(initData),
           gift_id: giftId,
           sent: sent.replace("@", "").trim(),
           type: "gift",
@@ -354,6 +380,7 @@ export const TelegramProvider = ({ children }) => {
         createGiftOrder,
         refreshUser,
         checkUsername,
+        getInitData,
       }}
     >
       {children}

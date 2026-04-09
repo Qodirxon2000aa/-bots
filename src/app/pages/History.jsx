@@ -482,7 +482,7 @@ const statusMap = {
 };
 
 export function HistoryPage() {
-  const { user } = useTelegram();
+  const { user, getInitData } = useTelegram();
 
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -492,9 +492,8 @@ export function HistoryPage() {
 
   /* ── FETCH PAYMENTS WITH POST + initData ── */
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-
-    if (!tg?.initData) {
+    const initData = getInitData?.() || "";
+    if (!initData) {
       setError("Telegram initData topilmadi. Iltimos, bot orqali qayta kiriting.");
       setLoading(false);
       return;
@@ -513,7 +512,8 @@ export function HistoryPage() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              initData: tg.initData,           // ← Asosiy o‘zgarish
+              initData,
+              init_data: initData,
             }),
           }
         );
@@ -538,7 +538,7 @@ export function HistoryPage() {
     };
 
     fetchPayments();
-  }, []); // initData bir marta yuklanadi
+  }, [getInitData]); // initData bir marta yuklanadi
 
   /* ── HELPERS ── */
   const getStatusConfig = (status) => {
