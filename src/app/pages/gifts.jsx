@@ -376,8 +376,7 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
   const handleOrder = async () => {
     if (!cleanUsername) return;
 
-    const initData =
-      (window.Telegram?.WebApp?.initData?.trim() || getInitData?.() || "").trim();
+    const initData = (getInitData?.() || "").trim();
     if (!initData) {
       setOrderError("Telegram initData topilmadi. Bot orqali qayta kiring.");
       return;
@@ -395,6 +394,7 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
 
       const body = {
         initData,
+        init_data: initData,
         gift_id: giftIdStr,
         username: `@${cleanUsername}`,
         comment: commentOn && comment.trim() ? comment.trim() : "",
@@ -472,7 +472,7 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
 // ════════════════════════════════════════════════
 const BuyNftModal = ({ gift, onClose, onSuccess }) => {
   const navigate   = useNavigate();
-  const { user }   = useTelegram();                // ← Telegram context
+  const { getInitData } = useTelegram();
   const userSearch = useUserSearch();
   const [orderLoading, setOrderLoad]  = useState(false);
   const [orderError,   setOrderError] = useState(null);
@@ -485,37 +485,42 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
     return nftId.split("-")[0].replace(/([A-Z])/g, " $1").trim();
   };
 
-  // Real Telegram ID → DEV MODE da fakeId ishlatiladi
-  const getSenderId = () => user?.id || "";
-
   const handleOrder = async () => {
     if (!cleanUsername) return;
-
-    const senderId = getSenderId();
-    if (!senderId) {
-      setOrderError("Foydalanuvchi ID topilmadi. Iltimos qayta kiring.");
+    const initData = (getInitData?.() || "").trim();
+    if (!initData) {
+      setOrderError("Telegram initData topilmadi. Bot orqali qayta kiring.");
       return;
     }
 
     setOrderLoad(true);
     setOrderError(null);
     try {
-      const params = new URLSearchParams({
-        user_id:  String(senderId),
-        gift_id:  String(gift.id),
-        sent:     `@${cleanUsername}`,
+      const giftIdStr = String(gift.id ?? "").trim();
+      if (!giftIdStr || !/^\d+$/.test(giftIdStr)) {
+        setOrderError("Noto'g'ri gift ID");
+        setOrderLoad(false);
+        return;
+      }
+
+      const payload = {
+        initData,
+        init_data: initData,
+        gift_id: giftIdStr,
+        username: `@${cleanUsername}`,
+        sent: `@${cleanUsername}`,
+      };
+
+      const res      = await fetch(NFT_ORDER_API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
       });
-
-      console.log("✨ NFT URL:", `${NFT_ORDER_API_BASE}?${params.toString()}`);
-
-      const res      = await fetch(`${NFT_ORDER_API_BASE}?${params.toString()}`);
       const rawText  = await res.text();
       const jsonStart = rawText.indexOf("{");
       const data     = JSON.parse(jsonStart >= 0 ? rawText.slice(jsonStart) : rawText);
 
-      console.log("✨ NFT ORDER javobi:", data);
-
-      if (data.ok === true) {
+      if (data.ok === true || data.status === "success") {
         setOrdered(true);
         onSuccess && onSuccess();
         setTimeout(() => { onClose(); navigate("/gifts"); }, 3000);

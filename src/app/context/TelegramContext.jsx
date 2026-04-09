@@ -14,6 +14,11 @@ export const TelegramProvider = ({ children }) => {
 
   const getInitData = () => {
     const telegram = window.Telegram?.WebApp;
+    try {
+      telegram?.ready();
+    } catch {
+      /* ignore */
+    }
     const directInitData = telegram?.initData?.trim();
     if (directInitData) {
       initDataRef.current = directInitData;
@@ -285,6 +290,7 @@ export const TelegramProvider = ({ children }) => {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           initData,
+          init_data: initData,
           gift_id: giftIdStr,
           username,
           comment: String(comment || "").trim(),
@@ -385,20 +391,29 @@ export const TelegramProvider = ({ children }) => {
       telegram.expand();
     }
 
-    if (isTelegramEnv && tgUser?.id) {
-      const realUser = {
-        id: String(tgUser.id),
-        first_name: tgUser.first_name || "",
-        last_name: tgUser.last_name || "",
-        username: tgUser.username ? `@${tgUser.username}` : "",
-        photo_url: tgUser.photo_url || null,
-        isTelegram: true,
-      };
-
-      setUser(realUser);
-
+    if (isTelegramEnv) {
       const initData = telegram.initData;
       initDataRef.current = initData;
+
+      const u = tgUser || telegram.initDataUnsafe?.user;
+      if (u?.id) {
+        setUser({
+          id: String(u.id),
+          first_name: u.first_name || "",
+          last_name: u.last_name || "",
+          username: u.username ? `@${u.username}` : "",
+          photo_url: u.photo_url || null,
+          isTelegram: true,
+        });
+      } else {
+        setUser({
+          id: "0",
+          first_name: "Foydalanuvchi",
+          username: "",
+          isTelegram: true,
+        });
+      }
+
       (async () => {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);

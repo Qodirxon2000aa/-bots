@@ -19,18 +19,18 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) {
-    return <SplashScreen />;
-  }
-
   return (
-    <ThemeProvider>
-      <TelegramProvider>
-        <AppProvider>
-          <RouterProvider router={router} />
-          <Toaster position="top-center" richColors />
-        </AppProvider>
-      </TelegramProvider>
-    </ThemeProvider>
+    <TelegramProvider>
+      <ThemeProvider>
+        {loading ? (
+          <SplashScreen />
+        ) : (
+          <AppProvider>
+            <RouterProvider router={router} />
+            <Toaster position="top-center" richColors />
+          </AppProvider>
+        )}
+      </ThemeProvider>
+    </TelegramProvider>
   );
 }
