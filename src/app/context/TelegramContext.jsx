@@ -179,28 +179,39 @@ export const TelegramProvider = ({ children }) => {
         }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.text();
+      let data = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
 
-      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || `HTTP ${res.status}`);
+      }
 
-      if (data.ok === true) {
+      const isSuccess = data?.ok === true || !!data?.order_id;
+      if (isSuccess) {
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
 
         return { 
           ok: true, 
-          message: data.message, 
+          message: data?.message || "Premium order created successfully",
           order_id: data.order_id 
         };
       }
 
       return { 
         ok: false, 
-        message: data.message || "Premium buyurtma yaratilmadi" 
+        message: data?.message || raw || "Premium buyurtma yaratilmadi" 
       };
     } catch (e) {
       console.error("createPremiumOrder error:", e);
-      toast.error("Premium sotib olishda xatolik");
+      toast.error("Premium sotib olishda xatolik", {
+        description: e?.message || "Server bilan bog'lanishda xatolik",
+      });
       return { ok: false, message: e.message };
     }
   };
