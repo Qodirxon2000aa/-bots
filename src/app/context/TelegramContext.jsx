@@ -158,14 +158,23 @@ export const TelegramProvider = ({ children }) => {
         return { ok: false, message: "initData topilmadi" };
       }
 
+      const cleanSent = sent.replace("@", "").trim();
+      const monthsNumber = Number(months) || 0;
+      const periodText = monthsNumber > 0 ? `${monthsNumber} oy` : String(months || "");
+
       const res = await fetch("https://tezpremium.uz/MilliyDokon/orders/premium.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           ...buildAuthPayload(initData),
-          months,
-          sent: sent.replace("@", "").trim(),
+          months: monthsNumber,
+          period: monthsNumber,
+          period_months: monthsNumber,
+          period_text: periodText,
+          amount: monthsNumber,
+          sent: cleanSent,
           type: "premium",
+          turi: "Premium",
           overall,
         }),
       });
