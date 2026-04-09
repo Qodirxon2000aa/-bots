@@ -158,7 +158,7 @@ export const TelegramProvider = ({ children }) => {
         return { ok: false, message: "initData topilmadi" };
       }
 
-      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/orders/premium.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
