@@ -261,7 +261,7 @@ export const TelegramProvider = ({ children }) => {
   };
 
   /* ========================= CREATE GIFT ORDER ========================= */
-  const createGiftOrder = async ({ giftId, sent, price }) => {
+  const createGiftOrder = async ({ giftId, sent, price, comment = "", anonim = false }) => {
     try {
       const balance = Number(apiUser?.balance || 0);
       if (balance < price) {
@@ -272,27 +272,42 @@ export const TelegramProvider = ({ children }) => {
       const initData = getInitData();
       if (!initData) throw new Error("initData topilmadi");
 
-      const res = await fetch("https://tezpremium.uz/MilliyDokon/main/orders.php", {
+      const clean = sent.replace("@", "").trim();
+      const username = clean ? `@${clean}` : "";
+
+      const giftIdStr = String(giftId ?? "").trim();
+      if (!giftIdStr || !/^\d+$/.test(giftIdStr)) {
+        return { ok: false, message: "Noto'g'ri gift ID" };
+      }
+
+      const res = await fetch("https://tezpremium.uz/MilliyDokon/gifts/order.php", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          ...buildAuthPayload(initData),
-          gift_id: giftId,
-          sent: sent.replace("@", "").trim(),
-          type: "gift",
+          initData,
+          gift_id: giftIdStr,
+          username,
+          comment: String(comment || "").trim(),
+          anonim: anonim ? "true" : "false",
         }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
 
-      if (data.ok === true) {
+      if (data?.ok === true || data?.status === "success") {
         toast.success("Gift muvaffaqiyatli yuborildi!");
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
         return { ok: true, order_id: data.order_id };
       }
 
-      return { ok: false, message: data.message || "Gift xatosi" };
+      return { ok: false, message: data?.message || raw || "Gift xatosi" };
     } catch (e) {
       console.error("createGiftOrder error:", e);
       toast.error("Gift yuborishda xatolik");

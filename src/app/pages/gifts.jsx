@@ -363,7 +363,7 @@ const SuccessOverlay = ({ text = "Gift muvaffaqiyatli jo'natildi" }) => (
 // ════════════════════════════════════════════════
 const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
   const navigate        = useNavigate();
-  const { user }        = useTelegram();           // ← Telegram context
+  const { getInitData } = useTelegram();
   const userSearch      = useUserSearch();
   const aiComment       = useAIComment();
   const [orderLoading, setOrderLoad]  = useState(false);
@@ -373,39 +373,45 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
   const { cleanUsername, anonim, userInfo } = userSearch;
   const { commentOn, comment }              = aiComment;
 
-  // Real Telegram ID → DEV MODE da fakeId ishlatiladi
-  const getSenderId = () => user?.id || "";
-
   const handleOrder = async () => {
     if (!cleanUsername) return;
 
-    const senderId = getSenderId();
-    if (!senderId) {
-      setOrderError("Foydalanuvchi ID topilmadi. Iltimos qayta kiring.");
+    const initData =
+      (window.Telegram?.WebApp?.initData?.trim() || getInitData?.() || "").trim();
+    if (!initData) {
+      setOrderError("Telegram initData topilmadi. Bot orqali qayta kiring.");
       return;
     }
 
     setOrderLoad(true);
     setOrderError(null);
     try {
-      const params = new URLSearchParams({
-        user_id: String(senderId),
-        gift_id:  String(gift.id),
+      const giftIdStr = String(gift.id ?? "").trim();
+      if (!giftIdStr || !/^\d+$/.test(giftIdStr)) {
+        setOrderError("Noto'g'ri gift ID");
+        setOrderLoad(false);
+        return;
+      }
+
+      const body = {
+        initData,
+        gift_id: giftIdStr,
         username: `@${cleanUsername}`,
-        anonim:   anonim ? "true" : "false",
+        comment: commentOn && comment.trim() ? comment.trim() : "",
+        anonim: anonim ? "true" : "false",
+      };
+
+      const res = await fetch(ORDER_API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
       });
-      if (commentOn && comment.trim()) params.append("comment", comment.trim());
 
-      console.log("🎁 ODDIY URL:", `${ORDER_API_BASE}?${params.toString()}`);
-
-      const res      = await fetch(`${ORDER_API_BASE}?${params.toString()}`);
-      const rawText  = await res.text();
+      const rawText = await res.text();
       const jsonStart = rawText.indexOf("{");
-      const data     = JSON.parse(jsonStart >= 0 ? rawText.slice(jsonStart) : rawText);
+      const data = JSON.parse(jsonStart >= 0 ? rawText.slice(jsonStart) : rawText);
 
-      console.log("🎁 ODDIY ORDER javobi:", data);
-
-      if (data.ok === true) {
+      if (data.ok === true || data.status === "success") {
         setOrdered(true);
         onSuccess && onSuccess();
         setTimeout(() => { onClose(); navigate("/gifts"); }, 3000);
