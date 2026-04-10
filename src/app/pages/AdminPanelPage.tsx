@@ -187,7 +187,7 @@ export function AdminPanelPage() {
       { label: '6 oylik Premium', key: '6oylik', type: '6oy', suffix: 'UZS' },
       { label: '12 oylik Premium', key: '12oylik', type: '12oy', suffix: 'UZS' },
       { label: 'TON kursi', key: 'tonkurs', type: 'ton', suffix: 'UZS' },
-      { label: 'Referal narxi', key: 'referal_price', type: 'sender', suffix: 'UZS' },
+      { label: 'Referal narxi', key: 'referal_price', type: 'referal', suffix: 'UZS' },
     ].map((item) => (
       <PriceBox
         key={item.type}
