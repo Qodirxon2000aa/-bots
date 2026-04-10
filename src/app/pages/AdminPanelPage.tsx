@@ -13,9 +13,32 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useTelegram } from '@/app/context/TelegramContext';
+
+const SETDATA_API = 'https://tezpremium.uz/MilliyDokon/control/setdata.php';
+
+async function postSetData(
+  initData: string,
+  type: string,
+  value: number
+): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetch(SETDATA_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      initData,
+      init_data: initData,
+      type,
+      value,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: !!data.ok, message: data.message };
+}
 
 export function AdminPanelPage() {
   const navigate = useNavigate();
+  const { getInitData } = useTelegram();
 
   /* ===================== RATE STATE (LOCAL) ===================== */
   const [currentRate, setCurrentRate] = useState<number | null>(null);
@@ -85,13 +108,18 @@ export function AdminPanelPage() {
       return;
     }
 
-    try {
-      const res = await fetch(
-        `https://tezpremium.uz/MilliyDokon/control/setdata.php?type=star&value=${rate}`
-      );
-      const data = await res.json();
+    const initData = (getInitData?.() || '').trim();
+    if (!initData) {
+      toast.error('Telegram initData topilmadi', {
+        description: "Admin panelni bot ichidagi Web App orqali oching.",
+      });
+      return;
+    }
 
-      if (data.ok) {
+    try {
+      const { ok, message } = await postSetData(initData, 'star', rate);
+
+      if (ok) {
         setCurrentRate(rate);
         setLastRateUpdate(new Date());
 
@@ -99,7 +127,9 @@ export function AdminPanelPage() {
           description: `1 ⭐ = ${new Intl.NumberFormat('uz-UZ').format(rate)} UZS`
         });
       } else {
-        toast.error('API kursni qabul qilmadi');
+        toast.error('API kursni qabul qilmadi', {
+          description: message || undefined,
+        });
       }
     } catch {
       toast.error('Serverga ulanishda xatolik');
@@ -270,6 +300,7 @@ function PriceBox({
   type: string;
   suffix: string;
 }) {
+  const { getInitData } = useTelegram();
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -290,7 +321,7 @@ function PriceBox({
     };
 
     loadValue();
-  }, []);
+  }, [settingKey, label]);
 
   const saveValue = async () => {
     const num = Number(value);
@@ -299,19 +330,26 @@ function PriceBox({
       return;
     }
 
+    const initData = (getInitData?.() || '').trim();
+    if (!initData) {
+      toast.error('Telegram initData topilmadi', {
+        description: "Admin panelni bot ichidagi Web App orqali oching.",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(
-        `https://tezpremium.uz/MilliyDokon/control/setdata.php?type=${type}&value=${num}`
-      );
-      const data = await res.json();
+      const { ok, message } = await postSetData(initData, type, num);
 
-      if (data.ok) {
+      if (ok) {
         toast.success(`${label} yangilandi`, {
           description: `${num.toLocaleString('uz-UZ')} ${suffix}`,
         });
       } else {
-        toast.error(`${label} saqlanmadi`);
+        toast.error(`${label} saqlanmadi`, {
+          description: message || undefined,
+        });
       }
     } catch {
       toast.error('Server xatoligi');
