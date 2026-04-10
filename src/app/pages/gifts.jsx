@@ -586,7 +586,7 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
 // ════════════════════════════════════════════════
 export default function GiftsPage() {
   const navigate    = useNavigate();
-  const { apiUser } = useTelegram();
+  const { apiUser, refreshUser } = useTelegram();
 
   const [mainTab,      setMainTab]      = useState("nft");
   const [oddiyFilter,  setOddiyFilter]  = useState("cheap");
@@ -683,6 +683,12 @@ export default function GiftsPage() {
   );
 
   const canAffordAny = gifts.length > 0 && userBalance >= minNftPrice;
+
+  const handleGiftOrderSuccess = () => {
+    void refreshUser();
+    void fetchNftGifts(activeFilter);
+    void fetchOddiyGifts();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -1017,7 +1023,7 @@ export default function GiftsPage() {
         <BuyOddiyModal
           gift={buyGift}
           onClose={() => setBuyGift(null)}
-          onSuccess={() => {}}
+          onSuccess={handleGiftOrderSuccess}
         />
       )}
 
@@ -1026,7 +1032,7 @@ export default function GiftsPage() {
         <BuyNftModal
           gift={buyNftGift}
           onClose={() => setBuyNftGift(null)}
-          onSuccess={() => {}}
+          onSuccess={handleGiftOrderSuccess}
         />
       )}
     </div>
