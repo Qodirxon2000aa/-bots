@@ -35,6 +35,8 @@ export interface LeaderboardEntry {
   totalUZS: number;
   displayName: string; // ✅ faqat toza ism
   avatar?: string;
+  userId?: number | string;
+  username?: string;
 }
 
 export interface Contest {
@@ -53,6 +55,8 @@ interface AppContextType {
   user: User;
   leaderboard: LeaderboardEntry[];
   weeklyLeaderboard: LeaderboardEntry[];
+  leaderboardWeek: string | null;
+  leaderboardLoading: boolean;
   contest: Contest | null;
   resetWeeklyLeaderboard: () => void;
   resetAllTimeLeaderboard: () => void;
@@ -78,16 +82,28 @@ const mockUser: User = {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardWeek, setLeaderboardWeek] = useState<string | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [contest, setContest] = useState<Contest | null>(null);
+
+  const WEEK_API = 'https://tezpremium.uz/MilliyDokon/main/week.php';
 
   /* ===================== API FETCH ===================== */
 
   const fetchLeaderboardFromApi = async () => {
+    setLeaderboardLoading(true);
     try {
-      const res = await fetch('https://m4746.myxvest.ru/webapp/week.php');
+      const res = await fetch(WEEK_API, { cache: 'no-cache' });
       const data = await res.json();
 
-      if (!data?.ok || !Array.isArray(data.top10)) return;
+      if (!data?.ok || !Array.isArray(data.top10)) {
+        setLeaderboardWeek(typeof data?.week === 'string' ? data.week : null);
+        setWeeklyLeaderboard([]);
+        setLeaderboard([]);
+        return;
+      }
+
+      setLeaderboardWeek(typeof data.week === 'string' ? data.week : null);
 
       const mapped: LeaderboardEntry[] = data.top10.map((item: any) => {
         // 🔥 @ ni MAJBURIY olib tashlash
@@ -102,10 +118,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           totalStars: Number(item.harid) || 0,
           totalUZS: Number(item.summa) || 0,
           avatar: item.photo || undefined,
+          userId: item.user_id != null ? item.user_id : undefined,
+          username:
+            typeof item.username === 'string'
+              ? item.username.replace(/^@/, '').trim()
+              : undefined,
         };
       });
 
-      // 🔥 stars bo‘yicha sort
+      // 🔥 harid (stars) bo‘yicha sort
       const sorted = [...mapped].sort(
         (a, b) => b.totalStars - a.totalStars
       );
@@ -121,6 +142,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (e) {
       console.error('Leaderboard API error:', e);
+      setWeeklyLeaderboard([]);
+      setLeaderboard([]);
+    } finally {
+      setLeaderboardLoading(false);
     }
   };
 
@@ -150,6 +175,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user: mockUser,
         leaderboard,
         weeklyLeaderboard,
+        leaderboardWeek,
+        leaderboardLoading,
         contest,
         resetWeeklyLeaderboard,
         resetAllTimeLeaderboard,

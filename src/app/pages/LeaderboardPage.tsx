@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '@/app/context/AppContext';
+import { useTelegram } from '@/app/context/TelegramContext';
 import { TopBar } from '@/app/components/ui/TopBar';
 import { Button } from '@/app/components/ui/Button';
 import { EmptyState } from '@/app/components/ui/EmptyState';
@@ -25,10 +26,10 @@ function hideLonelyAtSymbol() {
 
 export function LeaderboardPage() {
   const navigate = useNavigate();
-  const { user, leaderboard, resetAllTimeLeaderboard } = useApp();
+  const { leaderboard, leaderboardWeek, leaderboardLoading, resetAllTimeLeaderboard } = useApp();
+  const { user: tgUser } = useTelegram();
 
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [loading] = useState(false);
 
   /* ===================== 🔥 AUTO HIDE @ ===================== */
 
@@ -57,10 +58,13 @@ export function LeaderboardPage() {
 
   return (
     <div className="min-h-screen">
-      <TopBar title="Top Foydaluvchilar" subtitle="" />
+      <TopBar
+        title="Reyting"
+        subtitle={leaderboardWeek ? `Hafta: ${leaderboardWeek}` : 'Haftalik top'}
+      />
 
       <div className="p-4 space-y-6">
-        {loading ? (
+        {leaderboardLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <ListItemSkeleton key={i} />
@@ -73,9 +77,13 @@ export function LeaderboardPage() {
             <div className="space-y-2 mt-6">
               {leaderboard.slice(3).map((entry) => (
                 <LeaderboardRow
-                  key={entry.rank}
+                  key={`${entry.rank}-${entry.userId ?? entry.displayName}`}
                   entry={entry}
-                  isCurrentUser={entry.displayName === user.displayName}
+                  isCurrentUser={
+                    tgUser?.id != null &&
+                    entry.userId != null &&
+                    String(entry.userId) === String(tgUser.id)
+                  }
                 />
               ))}
             </div>

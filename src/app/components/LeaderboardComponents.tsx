@@ -48,7 +48,9 @@ export function PodiumCard({ entries }: PodiumCardProps) {
             
             <div className="text-center min-w-0 w-full">
               <p className="text-sm font-medium truncate">{entry.displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">@{entry.username}</p>
+              {entry.username ? (
+                <p className="text-xs text-muted-foreground truncate">@{entry.username}</p>
+              ) : null}
               <div className="mt-1">
                 <Badge variant={actualRank === 1 ? 'gold' : 'default'} className="text-[10px]">
                   {formatUZS(entry.totalStars)} ⭐
@@ -94,7 +96,9 @@ export function LeaderboardRow({ entry, isCurrentUser = false }: LeaderboardRowP
             <p className="font-medium truncate">{entry.displayName}</p>
             {isCurrentUser && <Badge variant="default" className="text-[10px]">You</Badge>}
           </div>
-          <p className="text-sm text-muted-foreground">@{entry.username}</p>
+          {entry.username ? (
+            <p className="text-sm text-muted-foreground">@{entry.username}</p>
+          ) : null}
         </div>
         
         <div className="text-right flex-shrink-0">
