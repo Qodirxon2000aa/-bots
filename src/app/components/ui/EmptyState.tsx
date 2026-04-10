@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { AlertCircle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -33,7 +33,7 @@ export function MessageBox({ type, title, children, className = '' }: MessageBox
     info: <Info className="w-5 h-5" />,
     success: <CheckCircle2 className="w-5 h-5" />,
     warning: <AlertCircle className="w-5 h-5" />,
-    error: <XCircle className="w-5 h-5" />
+    error: <AlertCircle className="w-5 h-5" />,
   };
   
   const colors = {

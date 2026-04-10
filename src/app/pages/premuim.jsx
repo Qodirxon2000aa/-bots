@@ -176,24 +176,18 @@ export default function Premium() {
       <div className="p-4 space-y-6">
         {!premiumServiceOn && (
           <MessageBox type="error">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>
-                Premium sotib olish hozircha mumkin emas.{' '}
-                <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
-              </span>
-            </div>
+            <span>
+              Premium sotib olish hozircha mumkin emas.{' '}
+              <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+            </span>
           </MessageBox>
         )}
         {!hasEnoughBalance && stars > 0 && !isLoadingSettings && (
           <MessageBox type="error">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>
-                Mablag&apos; yetarli emas. Kerak: <strong>{new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS</strong>,
-                sizda: <strong>{new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS</strong>
-              </span>
-            </div>
+            <span>
+              Mablag&apos; yetarli emas. Kerak: <strong>{new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS</strong>,
+              sizda: <strong>{new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS</strong>
+            </span>
           </MessageBox>
         )}
 

@@ -206,22 +206,19 @@ export function BuyStarsPage() {
       <div className="p-4 space-y-6">
         {!starsServiceOn && (
           <MessageBox type="error">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>
-                Stars sotib olish hozircha mumkin emas.{' '}
-                <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
-              </span>
-            </div>
+            <span>
+              Stars sotib olish hozircha mumkin emas.{' '}
+              <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+            </span>
           </MessageBox>
         )}
         {/* Balance Warning */}
         {!hasEnoughBalance && stars > 0 && !isLoadingRate && (
           <MessageBox type="error">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>Mablag' yetarli emas. Sizga <strong>{new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS</strong> kerak, lekin sizda <strong>{new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS</strong> bor</span>
-            </div>
+            <span>
+              Mablag&apos; yetarli emas. Sizga <strong>{new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS</strong> kerak,
+              lekin sizda <strong>{new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS</strong> bor
+            </span>
           </MessageBox>
         )}
 
