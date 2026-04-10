@@ -28,44 +28,69 @@ export function PodiumCard({ entries }: PodiumCardProps) {
   if (top3.length === 0) return null;
 
   return (
-    <div className="flex items-end justify-center gap-2 px-4 py-6">
-      {podiumOrder.map(({ entry, podiumIndex }) => {
-        if (!entry) return null;
-        
-        const Icon = icons[podiumIndex];
-        const actualRank = entry.rank;
-        
-        return (
-          <div key={`podium-${podiumIndex}`} className="flex-1 flex flex-col items-center gap-2">
-            <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-xl relative ${
-              actualRank === 1 ? 'ring-4 ring-telegram-gold/30' : ''
-            }`}>
-              {entry.displayName.charAt(0).toUpperCase()}
-              <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full ${bgColors[podiumIndex]} flex items-center justify-center border-2 border-background`}>
-                <Icon className={`w-3.5 h-3.5 ${colors[podiumIndex]}`} />
+    <div className="w-full max-w-full overflow-hidden px-2 sm:px-3 py-6">
+      <div className="flex items-end justify-center gap-1.5 sm:gap-2 mx-auto w-full max-w-md">
+        {podiumOrder.map(({ entry, podiumIndex }) => {
+          if (!entry) return null;
+
+          const Icon = icons[podiumIndex];
+          const actualRank = entry.rank;
+
+          return (
+            <div
+              key={`podium-${podiumIndex}`}
+              className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2"
+            >
+              <div
+                className={`relative flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-lg font-semibold text-white sm:h-16 sm:w-16 sm:text-xl ${
+                  actualRank === 1 ? 'ring-4 ring-telegram-gold/30' : ''
+                }`}
+              >
+                {entry.displayName.charAt(0).toUpperCase()}
+                <div
+                  className={`absolute -right-0.5 -top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background ${bgColors[podiumIndex]}`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${colors[podiumIndex]}`} />
+                </div>
+              </div>
+
+              <div className="flex w-full min-w-0 flex-col items-center gap-1 px-0.5">
+                <p
+                  className="line-clamp-2 w-full break-words text-center text-[11px] font-medium leading-tight text-foreground sm:text-xs"
+                  title={entry.displayName}
+                >
+                  {entry.displayName}
+                </p>
+                {entry.username ? (
+                  <p className="w-full truncate text-center text-[10px] text-muted-foreground sm:text-xs">
+                    @{entry.username}
+                  </p>
+                ) : null}
+                <div className="flex w-full min-w-0 justify-center">
+                  <Badge
+                    variant={actualRank === 1 ? 'gold' : 'default'}
+                    className="max-w-full truncate px-1.5 py-0 text-[10px] sm:text-[11px]"
+                  >
+                    {formatUZS(entry.totalStars)} ⭐
+                  </Badge>
+                </div>
+              </div>
+
+              <div
+                className={`mt-auto w-full min-w-0 rounded-t-xl bg-gradient-to-t pb-2.5 pt-1 flex items-end justify-center sm:pb-3 ${
+                  heights[podiumIndex]
+                } ${
+                  actualRank === 1
+                    ? 'from-telegram-gold/20 to-telegram-gold/5'
+                    : 'from-muted to-muted/50'
+                }`}
+              >
+                <span className="text-xl font-bold sm:text-2xl">{actualRank}</span>
               </div>
             </div>
-            
-            <div className="text-center min-w-0 w-full">
-              <p className="text-sm font-medium truncate">{entry.displayName}</p>
-              {entry.username ? (
-                <p className="text-xs text-muted-foreground truncate">@{entry.username}</p>
-              ) : null}
-              <div className="mt-1">
-                <Badge variant={actualRank === 1 ? 'gold' : 'default'} className="text-[10px]">
-                  {formatUZS(entry.totalStars)} ⭐
-                </Badge>
-              </div>
-            </div>
-            
-            <div className={`${heights[podiumIndex]} w-full bg-gradient-to-t ${
-              actualRank === 1 ? 'from-telegram-gold/20 to-telegram-gold/5' : 'from-muted to-muted/50'
-            } rounded-t-xl flex items-end justify-center pb-3`}>
-              <span className="text-2xl font-bold">{actualRank}</span>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -97,7 +122,7 @@ export function LeaderboardRow({ entry, isCurrentUser = false }: LeaderboardRowP
             {isCurrentUser && <Badge variant="default" className="text-[10px]">You</Badge>}
           </div>
           {entry.username ? (
-            <p className="text-sm text-muted-foreground">@{entry.username}</p>
+            <p className="truncate text-sm text-muted-foreground">@{entry.username}</p>
           ) : null}
         </div>
         
