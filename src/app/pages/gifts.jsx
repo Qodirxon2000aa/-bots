@@ -41,7 +41,7 @@ const GIFT_EMOJIS = {
 };
 
 const OPENROUTER_API_KEY = "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";
-const NFT_API_BASE       = "https://tezpremium.uz/uzbstar/giftlar.php";
+const NFT_API_BASE       = "https://tezpremium.uz/MilliyDokon/nft/list.php";
 const ODDIY_API_BASE     = "https://tezpremium.uz/MilliyDokon/gifts/info.php";
 const ORDER_API_BASE     = "https://tezpremium.uz/MilliyDokon/gifts/order.php";
 const NFT_ORDER_API_BASE = "https://tezpremium.uz/MilliyDokon/gifts/nft.php";

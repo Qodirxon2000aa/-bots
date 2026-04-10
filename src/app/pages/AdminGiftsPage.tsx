@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-/** Ro‘yxat (ochiq API) */
-const GIFT_LIST_API = 'https://tezpremium.uz/uzbstar/giftlar.php';
+/** NFT ro‘yxat */
+const GIFT_LIST_API = 'https://tezpremium.uz/MilliyDokon/nft/list.php';
 
 /** Qo‘shish: POST JSON { initData, url, price } */
 const NFT_GIFT_ADD_API = 'https://tezpremium.uz/MilliyDokon/nft/add.php';
