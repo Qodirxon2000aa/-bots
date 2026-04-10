@@ -299,162 +299,160 @@ export function AdminGiftsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="space-y-3">
+          <div className="flex items-end justify-between gap-3 px-0.5">
             <div>
-              <CardTitle className="text-base">Jadval</CardTitle>
-              <CardDescription>{gifts.length} ta NFT</CardDescription>
+              <h2 className="text-lg font-bold tracking-tight">Barcha NFT giftlar</h2>
+              <p className="text-sm text-muted-foreground">{gifts.length} ta · 2 ustun</p>
             </div>
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="gap-1"
+              size="default"
+              className="shrink-0 gap-2 rounded-xl"
               onClick={() => void loadGifts()}
               disabled={listLoading}
             >
-              <Loader2 className={`h-3.5 w-3.5 ${listLoading ? 'animate-spin' : 'hidden'}`} />
+              <Loader2 className={`h-4 w-4 ${listLoading ? 'animate-spin' : 'hidden'}`} />
               Yangilash
             </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {listLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <p className="text-sm">Yuklanmoqda...</p>
-              </div>
-            ) : gifts.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-4 py-14 text-center text-muted-foreground">
-                <ShieldAlert className="h-10 w-10 opacity-40" />
-                <p className="text-sm">Hozircha NFT gift yo‘q</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[320px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30 text-left text-xs text-muted-foreground">
-                      <th className="px-3 py-3 font-medium">Rasm</th>
-                      <th className="px-3 py-3 font-medium">Gift</th>
-                      <th className="px-3 py-3 font-medium">Narx (UZS)</th>
-                      <th className="px-3 py-3 font-medium text-right">Amallar</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gifts.map((g) => (
-                      <tr
-                        key={g.id}
-                        className="border-b border-border/60 transition-colors hover:bg-accent/20"
+          </div>
+
+          {listLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border py-20 text-muted-foreground">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-sm font-medium">Yuklanmoqda...</p>
+            </div>
+          ) : gifts.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+              <ShieldAlert className="h-12 w-12 opacity-35" />
+              <p className="text-sm font-medium">Hozircha NFT gift yo‘q</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {gifts.map((g) => (
+                <div
+                  key={g.id}
+                  className="flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-md ring-1 ring-black/5 transition-all hover:shadow-lg hover:ring-primary/25 dark:ring-white/10"
+                >
+                  <div className="relative aspect-[3/4] w-full bg-gradient-to-b from-muted/60 to-muted/20">
+                    {g.photo ? (
+                      <img
+                        src={g.photo}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Gift className="h-16 w-16 text-muted-foreground/35" />
+                      </div>
+                    )}
+                    <div className="absolute left-2 top-2 rounded-lg bg-background/85 px-2 py-1 text-xs font-bold shadow-sm backdrop-blur-sm">
+                      #{g.id}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-1 flex-col gap-3 p-3 sm:p-4">
+                    <div className="min-w-0 space-y-1">
+                      <p
+                        className="line-clamp-2 text-sm font-semibold leading-snug sm:text-base"
+                        title={formatNftName(g.nft_id)}
                       >
-                        <td className="px-3 py-3 align-middle">
-                          <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-border/60 bg-muted/40">
-                            {g.photo ? (
-                              <img
-                                src={g.photo}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                                <Gift className="h-6 w-6 opacity-40" />
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="max-w-[140px] px-3 py-3 align-middle sm:max-w-[200px]">
-                          <p className="truncate font-medium" title={formatNftName(g.nft_id)}>
-                            {formatNftName(g.nft_id)}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground" title={g.nft_id}>
-                            {g.nft_id}
-                          </p>
-                          {g.link ? (
-                            <a
-                              href={g.link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-1 inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Link
-                            </a>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-3 align-middle">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 shrink-0 p-0"
-                              onClick={() => bumpPrice(g.id, -1000)}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                            <Input
-                              type="number"
-                              min={0}
-                              className="h-9 w-[5.5rem] text-center text-xs sm:w-24"
-                              value={draftPrices[g.id] ?? g.price}
-                              onChange={(e) =>
-                                setDraftPrices((p) => ({
-                                  ...p,
-                                  [g.id]: Number(e.target.value) || 0,
-                                }))
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 shrink-0 p-0"
-                              onClick={() => bumpPrice(g.id, 1000)}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-middle">
-                          <div className="flex flex-wrap items-center justify-end gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              className="h-8 gap-1 px-2"
-                              disabled={savingId === g.id}
-                              onClick={() => void savePrice(g.id)}
-                            >
-                              {savingId === g.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Save className="h-3.5 w-3.5" />
-                              )}
-                              <span className="hidden sm:inline">Saqlash</span>
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 px-2"
-                              disabled={deletingId === g.id}
-                              onClick={() => void deleteGift(g.id)}
-                            >
-                              {deletingId === g.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                        {formatNftName(g.nft_id)}
+                      </p>
+                      <p
+                        className="line-clamp-1 font-mono text-[10px] text-muted-foreground sm:text-xs"
+                        title={g.nft_id}
+                      >
+                        {g.nft_id}
+                      </p>
+                      {g.link ? (
+                        <a
+                          href={g.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline sm:text-sm"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                          Telegramda ochish
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Narx (UZS)
+                      </p>
+                      <div className="flex items-stretch gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 w-12 shrink-0 rounded-xl p-0 sm:h-14 sm:w-14"
+                          onClick={() => bumpPrice(g.id, -5000)}
+                        >
+                          <Minus className="h-5 w-5" />
+                        </Button>
+                        <Input
+                          type="number"
+                          min={0}
+                          className="h-12 min-w-0 flex-1 rounded-xl border-2 text-center text-base font-bold tabular-nums sm:h-14 sm:text-lg"
+                          value={draftPrices[g.id] ?? g.price}
+                          onChange={(e) =>
+                            setDraftPrices((p) => ({
+                              ...p,
+                              [g.id]: Number(e.target.value) || 0,
+                            }))
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 w-12 shrink-0 rounded-xl p-0 sm:h-14 sm:w-14"
+                          onClick={() => bumpPrice(g.id, 5000)}
+                        >
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="h-12 w-full gap-2 rounded-xl text-base font-semibold sm:h-14"
+                        disabled={savingId === g.id}
+                        onClick={() => void savePrice(g.id)}
+                      >
+                        {savingId === g.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Save className="h-5 w-5" />
+                        )}
+                        Saqlash
+                      </Button>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="destructive"
+                        className="h-11 w-full gap-2 rounded-xl font-semibold"
+                        disabled={deletingId === g.id}
+                        onClick={() => void deleteGift(g.id)}
+                      >
+                        {deletingId === g.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        O‘chirish
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
