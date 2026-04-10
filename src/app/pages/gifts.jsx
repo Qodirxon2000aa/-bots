@@ -683,6 +683,11 @@ export default function GiftsPage() {
   );
 
   const canAffordAny = gifts.length > 0 && userBalance >= minNftPrice;
+  const canAffordAnyOddiy = oddiyGifts.length > 0 && userBalance >= minOddiyPrice;
+
+  const showBalanceTopUpHint =
+    (mainTab === "nft" && !nftLoading && gifts.length > 0 && !canAffordAny) ||
+    (mainTab === "oddiy" && !oddiyLoading && oddiyGifts.length > 0 && !canAffordAnyOddiy);
 
   const handleGiftOrderSuccess = () => {
     void refreshUser();
@@ -711,7 +716,7 @@ export default function GiftsPage() {
                 <Wallet className="w-6 h-6" />
               </div>
             </div>
-            {mainTab === "nft" && !nftLoading && gifts.length > 0 && !canAffordAny && (
+            {showBalanceTopUpHint && (
               <div className="mt-3 flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-white/80" />
                 <p className="text-xs text-white/80">Giftlar sotib olish uchun balansingizni to'ldiring</p>
