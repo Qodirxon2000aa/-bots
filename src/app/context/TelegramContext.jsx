@@ -1,7 +1,28 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 const TelegramContext = createContext(null);
+
+const SERVICE_STATUS_API = "https://tezpremium.uz/MilliyDokon/control/status.php";
+
+const DEFAULT_SERVICE_SETTINGS = {
+  webapp: "on",
+  stars: "on",
+  premium: "on",
+  gift: "on",
+  nft: "on",
+};
+
+function normalizeServiceSettings(raw) {
+  const out = { ...DEFAULT_SERVICE_SETTINGS };
+  if (!raw || typeof raw !== "object") return out;
+  for (const k of Object.keys(DEFAULT_SERVICE_SETTINGS)) {
+    if (raw[k] != null && raw[k] !== "") {
+      out[k] = String(raw[k]).trim().toLowerCase();
+    }
+  }
+  return out;
+}
 
 export const TelegramProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,8 +30,40 @@ export const TelegramProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [serviceSettings, setServiceSettings] = useState(() => ({ ...DEFAULT_SERVICE_SETTINGS }));
+  const [statusLoading, setStatusLoading] = useState(true);
   const fetchedRef = useRef(false);
   const initDataRef = useRef("");
+
+  const fetchServiceStatus = useCallback(async (options = {}) => {
+    const silent = !!options.silent;
+    if (!silent) setStatusLoading(true);
+    try {
+      const res = await fetch(SERVICE_STATUS_API, { cache: "no-store" });
+      const data = await res.json();
+      if (data.ok && data.settings) {
+        setServiceSettings(normalizeServiceSettings(data.settings));
+      } else {
+        setServiceSettings({ ...DEFAULT_SERVICE_SETTINGS });
+      }
+    } catch (err) {
+      console.error("fetchServiceStatus error:", err);
+      setServiceSettings({ ...DEFAULT_SERVICE_SETTINGS });
+    } finally {
+      if (!silent) setStatusLoading(false);
+    }
+  }, []);
+
+  const isFeatureEnabled = useCallback(
+    (feature) => {
+      if (apiUser?.is_admin) return true;
+      const val = serviceSettings[feature];
+      if (val === undefined || val === null || val === "") return true;
+      const s = String(val).toLowerCase();
+      return s === "on" || s === "1" || s === "true" || s === "yes";
+    },
+    [apiUser?.is_admin, serviceSettings]
+  );
 
   const getInitData = () => {
     const telegram = window.Telegram?.WebApp;
@@ -329,6 +382,7 @@ export const TelegramProvider = ({ children }) => {
       await fetchOrders(initData);
       await fetchPayments(initData);
     }
+    await fetchServiceStatus({ silent: true });
   };
 
   /* ========================= CHECK USERNAME ========================= */
@@ -375,6 +429,13 @@ export const TelegramProvider = ({ children }) => {
     }
     return null;
   };
+
+  /* ========================= SERVICE STATUS (status.php) ========================= */
+  useEffect(() => {
+    void fetchServiceStatus({ silent: false });
+    const id = setInterval(() => void fetchServiceStatus({ silent: true }), 60000);
+    return () => clearInterval(id);
+  }, [fetchServiceStatus]);
 
   /* ========================= INIT ========================= */
   useEffect(() => {
@@ -438,6 +499,10 @@ export const TelegramProvider = ({ children }) => {
         orders,
         payments,
         loading,
+        serviceSettings,
+        statusLoading,
+        fetchServiceStatus,
+        isFeatureEnabled,
         createOrder,
         createPremiumOrder,
         createGiftOrder,

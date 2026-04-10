@@ -18,7 +18,8 @@ const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 export function BuyStarsPage() {
   const navigate = useNavigate();
   // user ni ham olamiz — Telegram WebApp dan kelgan ma'lumotlar
-  const { apiUser, user, createOrder, refreshUser, checkUsername } = useTelegram();
+  const { apiUser, user, createOrder, refreshUser, checkUsername, isFeatureEnabled } = useTelegram();
+  const starsServiceOn = isFeatureEnabled('stars');
   
   const [username, setUsername] = useState('');
   const [stars, setStars] = useState(100);
@@ -112,7 +113,10 @@ export function BuyStarsPage() {
 
   const handleConfirmPayment = async () => {
     if (!username) return;
-    
+    if (!starsServiceOn) {
+      toast.error("Xizmat vaqtincha o'chirilgan");
+      return;
+    }
     if (!hasEnoughBalance) {
       toast.error("Mablag' yetarli emas", {
         description: `Sizda ${new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS bor, lekin ${new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS kerak`
@@ -200,6 +204,17 @@ export function BuyStarsPage() {
       />
 
       <div className="p-4 space-y-6">
+        {!starsServiceOn && (
+          <MessageBox type="error">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>
+                Stars sotib olish hozircha mumkin emas.{' '}
+                <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+              </span>
+            </div>
+          </MessageBox>
+        )}
         {/* Balance Warning */}
         {!hasEnoughBalance && stars > 0 && !isLoadingRate && (
           <MessageBox type="error">
@@ -336,11 +351,17 @@ export function BuyStarsPage() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!canProceed || !hasEnoughBalance || isLoadingRate}
+            disabled={!starsServiceOn || !canProceed || !hasEnoughBalance || isLoadingRate}
             onClick={() => setShowConfirmDialog(true)}
           >
             <Sparkles className="w-5 h-5" />
-            {isLoadingRate ? 'Yuklanmoqda...' : !hasEnoughBalance && canProceed ? "Mablag' yetarli emas" : 'Sotib olish'}
+            {!starsServiceOn
+              ? "Xizmat vaqtincha o'chirilgan"
+              : isLoadingRate
+                ? 'Yuklanmoqda...'
+                : !hasEnoughBalance && canProceed
+                  ? "Mablag' yetarli emas"
+                  : 'Sotib olish'}
           </Button>
           
           <Button

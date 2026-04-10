@@ -13,7 +13,8 @@ import { SummaryCard } from '@/app/components/SummaryCard2';
 
 export default function Premium() {
   const navigate = useNavigate();
-  const { apiUser, user, createPremiumOrder, refreshUser, checkUsername } = useTelegram();
+  const { apiUser, user, createPremiumOrder, refreshUser, checkUsername, isFeatureEnabled } = useTelegram();
+  const premiumServiceOn = isFeatureEnabled('premium');
 
   const [username, setUsername] = useState('');
   const [stars, setStars] = useState(300); // 3 oylik uchun 300 stars
@@ -105,6 +106,10 @@ export default function Premium() {
 
   const handleConfirmPayment = async () => {
     if (!username || !stars) return;
+    if (!premiumServiceOn) {
+      toast.error("Xizmat vaqtincha o'chirilgan");
+      return;
+    }
     if (!hasEnoughBalance) {
       toast.error("Mablag' yetarli emas", {
         description: `Kerak: ${new Intl.NumberFormat('uz-UZ').format(totalCost)} UZS, sizda: ${new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS`,
@@ -169,6 +174,17 @@ export default function Premium() {
       />
 
       <div className="p-4 space-y-6">
+        {!premiumServiceOn && (
+          <MessageBox type="error">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>
+                Premium sotib olish hozircha mumkin emas.{' '}
+                <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+              </span>
+            </div>
+          </MessageBox>
+        )}
         {!hasEnoughBalance && stars > 0 && !isLoadingSettings && (
           <MessageBox type="error">
             <div className="flex items-center gap-2">
@@ -308,15 +324,17 @@ export default function Premium() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!canProceed || !hasEnoughBalance || isLoadingSettings}
+            disabled={!premiumServiceOn || !canProceed || !hasEnoughBalance || isLoadingSettings}
             onClick={() => setShowConfirmDialog(true)}
           >
             <Sparkles className="w-5 h-5 mr-2" />
-            {isLoadingSettings
-              ? 'Yuklanmoqda...'
-              : !hasEnoughBalance && canProceed
-              ? "Mablag' yetarli emas"
-              : 'Sotib olish'}
+            {!premiumServiceOn
+              ? "Xizmat vaqtincha o'chirilgan"
+              : isLoadingSettings
+                ? 'Yuklanmoqda...'
+                : !hasEnoughBalance && canProceed
+                  ? "Mablag' yetarli emas"
+                  : 'Sotib olish'}
           </Button>
 
           <Button variant="secondary" size="md" fullWidth disabled={!username}>

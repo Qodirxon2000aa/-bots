@@ -361,7 +361,7 @@ const SuccessOverlay = ({ text = "Gift muvaffaqiyatli jo'natildi" }) => (
 // ════════════════════════════════════════════════
 // ── BUY MODAL — Oddiy Gifts ──
 // ════════════════════════════════════════════════
-const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
+const BuyOddiyModal = ({ gift, onClose, onSuccess, giftServiceOn }) => {
   const navigate        = useNavigate();
   const { getInitData } = useTelegram();
   const userSearch      = useUserSearch();
@@ -375,6 +375,10 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
 
   const handleOrder = async () => {
     if (!cleanUsername) return;
+    if (!giftServiceOn) {
+      setOrderError("Xizmat vaqtincha o'chirilgan");
+      return;
+    }
 
     const initData = (getInitData?.() || "").trim();
     if (!initData) {
@@ -425,7 +429,12 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
     }
   };
 
-  const canOrder = !orderLoading && cleanUsername && (userInfo || anonim) && !ordered;
+  const canOrder =
+    giftServiceOn &&
+    !orderLoading &&
+    cleanUsername &&
+    (userInfo || anonim) &&
+    !ordered;
 
   return (
     <>
@@ -438,6 +447,13 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
         <UserInputSection {...userSearch} />
         <CommentSection   {...aiComment} />
         <AnonimToggle anonim={anonim} setAnonim={userSearch.setAnonim} />
+
+        {!giftServiceOn && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-3">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-200/90">Xizmat vaqtincha o&apos;chirilgan</p>
+          </div>
+        )}
 
         {orderError && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 mb-3">
@@ -457,7 +473,9 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
           >
             {orderLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" />Yuborilmoqda...</>
-              : <><Send    className="w-4 h-4" />Gift yuborish</>}
+              : !giftServiceOn
+                ? <><AlertCircle className="w-4 h-4" />Xizmat o&apos;chirilgan</>
+                : <><Send    className="w-4 h-4" />Gift yuborish</>}
           </button>
         )}
       </ModalShell>
@@ -470,7 +488,7 @@ const BuyOddiyModal = ({ gift, onClose, onSuccess }) => {
 // ════════════════════════════════════════════════
 // ── BUY MODAL — NFT Gifts ──
 // ════════════════════════════════════════════════
-const BuyNftModal = ({ gift, onClose, onSuccess }) => {
+const BuyNftModal = ({ gift, onClose, onSuccess, nftServiceOn }) => {
   const navigate   = useNavigate();
   const { getInitData } = useTelegram();
   const userSearch = useUserSearch();
@@ -487,6 +505,10 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
 
   const handleOrder = async () => {
     if (!cleanUsername) return;
+    if (!nftServiceOn) {
+      setOrderError("Xizmat vaqtincha o'chirilgan");
+      return;
+    }
     const initData = (getInitData?.() || "").trim();
     if (!initData) {
       setOrderError("Telegram initData topilmadi. Bot orqali qayta kiring.");
@@ -534,7 +556,11 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
     }
   };
 
-  const canOrder = !orderLoading && cleanUsername.length > 2 && !ordered;
+  const canOrder =
+    nftServiceOn &&
+    !orderLoading &&
+    cleanUsername.length > 2 &&
+    !ordered;
 
   return (
     <>
@@ -552,6 +578,13 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
         onClose={onClose}
       >
         <UserInputSection {...userSearch} />
+
+        {!nftServiceOn && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-3">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-200/90">Xizmat vaqtincha o&apos;chirilgan</p>
+          </div>
+        )}
 
         {orderError && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 mb-3">
@@ -571,7 +604,9 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
           >
             {orderLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" />Yuborilmoqda...</>
-              : <><Send    className="w-4 h-4" />NFT Gift yuborish</>}
+              : !nftServiceOn
+                ? <><AlertCircle className="w-4 h-4" />Xizmat o&apos;chirilgan</>
+                : <><Send    className="w-4 h-4" />NFT Gift yuborish</>}
           </button>
         )}
       </ModalShell>
@@ -586,7 +621,9 @@ const BuyNftModal = ({ gift, onClose, onSuccess }) => {
 // ════════════════════════════════════════════════
 export default function GiftsPage() {
   const navigate    = useNavigate();
-  const { apiUser, refreshUser } = useTelegram();
+  const { apiUser, refreshUser, isFeatureEnabled } = useTelegram();
+  const giftServiceOn = isFeatureEnabled("gift");
+  const nftServiceOn  = isFeatureEnabled("nft");
 
   const [mainTab,      setMainTab]      = useState("nft");
   const [oddiyFilter,  setOddiyFilter]  = useState("cheap");
@@ -762,6 +799,15 @@ export default function GiftsPage() {
               ))}
             </div>
 
+            {!nftServiceOn && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600/90 leading-snug">
+                  NFT gift yuborish hozircha mumkin emas. <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <Card><CardContent className="pt-4 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -829,9 +875,11 @@ export default function GiftsPage() {
                   <div className="grid grid-cols-2 gap-2.5">
                     {gifts.map((gift) => {
                       const affordable = canBuy(gift.price);
+                      const canPurchase = affordable && nftServiceOn;
+                      const dimCard = !affordable || !nftServiceOn;
                       return (
                         <div key={gift.id} className={`rounded-xl border overflow-hidden transition-all
-                          ${affordable ? "border-border/50" : "border-border/30 opacity-70"}`}>
+                          ${dimCard ? "border-border/30 opacity-70" : "border-border/50"}`}>
                           <div className="relative w-full aspect-square bg-accent/20">
                             <img src={gift.photo} alt={formatName(gift.nft_id)}
                               className="w-full h-full object-cover" loading="lazy"
@@ -839,7 +887,15 @@ export default function GiftsPage() {
                             <div className="absolute inset-0 items-center justify-center" style={{ display: "none" }}>
                               <Gift className="w-10 h-10 text-muted-foreground/30" />
                             </div>
-                            {!affordable && (
+                            {!nftServiceOn && (
+                              <div className="absolute inset-0 bg-background/60 flex items-center justify-center p-1">
+                                <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight">Xizmat o&apos;chirilgan</span>
+                                </div>
+                              </div>
+                            )}
+                            {nftServiceOn && !affordable && (
                               <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
                                 <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
                                   <Wallet className="w-3 h-3 text-muted-foreground" />
@@ -873,15 +929,17 @@ export default function GiftsPage() {
                               </button>
                             </div>
                             <button
-                              onClick={() => affordable && setBuyNftGift(gift)}
-                              disabled={!affordable}
+                              onClick={() => canPurchase && setBuyNftGift(gift)}
+                              disabled={!canPurchase}
                               className={`w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-semibold transition-all
-                                ${affordable
+                                ${canPurchase
                                   ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
                                   : "bg-muted text-muted-foreground cursor-not-allowed"}`}>
-                              {affordable
-                                ? <><ShoppingCart className="w-3.5 h-3.5 shrink-0" />Yuborish</>
-                                : <><Wallet className="w-3.5 h-3.5 shrink-0" />Balans yetmaydi</>}
+                              {!nftServiceOn
+                                ? <><AlertCircle className="w-3.5 h-3.5 shrink-0" />O&apos;chirilgan</>
+                                : affordable
+                                  ? <><ShoppingCart className="w-3.5 h-3.5 shrink-0" />Yuborish</>
+                                  : <><Wallet className="w-3.5 h-3.5 shrink-0" />Balans yetmaydi</>}
                             </button>
                           </div>
                         </div>
@@ -911,6 +969,15 @@ export default function GiftsPage() {
                 </button>
               ))}
             </div>
+
+            {!giftServiceOn && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600/90 leading-snug">
+                  Oddiy gift sotib olish hozircha mumkin emas. <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Card><CardContent className="pt-4 pb-4">
@@ -977,12 +1044,22 @@ export default function GiftsPage() {
                   <div className="grid grid-cols-2 gap-2.5">
                     {oddiyList.map((gift) => {
                       const affordable = canBuy(gift.price);
+                      const canPurchase = affordable && giftServiceOn;
+                      const dimCard = !affordable || !giftServiceOn;
                       return (
                         <div key={gift.id} className={`rounded-xl border overflow-hidden transition-all
-                          ${affordable ? "border-border/50" : "border-border/30 opacity-70"}`}>
+                          ${dimCard ? "border-border/30 opacity-70" : "border-border/50"}`}>
                           <div className="relative w-full aspect-square bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center overflow-hidden">
                             <GiftAnimation name={gift.name} />
-                            {!affordable && (
+                            {!giftServiceOn && (
+                              <div className="absolute inset-0 bg-background/60 flex items-center justify-center p-1">
+                                <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight">Xizmat o&apos;chirilgan</span>
+                                </div>
+                              </div>
+                            )}
+                            {giftServiceOn && !affordable && (
                               <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
                                 <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
                                   <Wallet className="w-3 h-3 text-muted-foreground" />
@@ -1001,15 +1078,17 @@ export default function GiftsPage() {
                               <span className="font-normal text-xs text-muted-foreground ml-0.5">UZS</span>
                             </p>
                             <button
-                              onClick={() => affordable && setBuyGift(gift)}
-                              disabled={!affordable}
+                              onClick={() => canPurchase && setBuyGift(gift)}
+                              disabled={!canPurchase}
                               className={`w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-semibold transition-all mt-1
-                                ${affordable
+                                ${canPurchase
                                   ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
                                   : "bg-muted text-muted-foreground cursor-not-allowed"}`}>
-                              {affordable
-                                ? <><ShoppingCart className="w-3.5 h-3.5 shrink-0" />Sotib olish</>
-                                : <><Wallet className="w-3.5 h-3.5 shrink-0" />Balans yetmaydi</>}
+                              {!giftServiceOn
+                                ? <><AlertCircle className="w-3.5 h-3.5 shrink-0" />O&apos;chirilgan</>
+                                : affordable
+                                  ? <><ShoppingCart className="w-3.5 h-3.5 shrink-0" />Sotib olish</>
+                                  : <><Wallet className="w-3.5 h-3.5 shrink-0" />Balans yetmaydi</>}
                             </button>
                           </div>
                         </div>
@@ -1027,6 +1106,7 @@ export default function GiftsPage() {
       {buyGift && (
         <BuyOddiyModal
           gift={buyGift}
+          giftServiceOn={giftServiceOn}
           onClose={() => setBuyGift(null)}
           onSuccess={handleGiftOrderSuccess}
         />
@@ -1036,6 +1116,7 @@ export default function GiftsPage() {
       {buyNftGift && (
         <BuyNftModal
           gift={buyNftGift}
+          nftServiceOn={nftServiceOn}
           onClose={() => setBuyNftGift(null)}
           onSuccess={handleGiftOrderSuccess}
         />

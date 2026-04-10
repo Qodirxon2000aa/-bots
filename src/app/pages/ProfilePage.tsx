@@ -347,7 +347,6 @@ export function ProfilePage() {
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground pt-4 pb-8">
           <p>Stars Market • v1.0.0</p>
-          <p className="text-xs mt-1">Made with ❤️ by @qiyossiz</p>
         </div>
       </div>
     </div>
