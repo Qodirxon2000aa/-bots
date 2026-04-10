@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Lock,
   ChevronDown,
+  Gift,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -272,6 +273,36 @@ export function ProfilePage() {
                         <div>
                           <p className="text-sm font-semibold">Admin panel</p>
                           <p className="text-xs text-muted-foreground">Narxlar va reytinglarni boshqarish</p>
+                        </div>
+                      </div>
+                      {isAdmin ? (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-muted-foreground/50" />
+                      )}
+                    </div>
+
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAdmin) {
+                          setSettingsOpen(false);
+                          navigate('/admin/gifts');
+                        }
+                      }}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        isAdmin
+                          ? 'cursor-pointer border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10'
+                          : 'opacity-50 cursor-not-allowed border-border/40 bg-muted/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                          <Gift className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">NFT giftlar boshqaruvi</p>
+                          <p className="text-xs text-muted-foreground">Qo‘shish, narx, jadval</p>
                         </div>
                       </div>
                       {isAdmin ? (

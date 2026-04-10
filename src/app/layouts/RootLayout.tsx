@@ -27,6 +27,7 @@ export function RootLayout() {
         "history",
         "profile",
         "admin",
+        "admin/gifts",
         "buy"
       ];
 

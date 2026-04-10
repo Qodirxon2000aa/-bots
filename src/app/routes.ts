@@ -6,6 +6,7 @@ import { LeaderboardPage } from '@/app/pages/LeaderboardPage';
 import { HistoryPage } from '@/app/pages/HistoryPage';
 import { ProfilePage } from '@/app/pages/ProfilePage';
 import { AdminPanelPage } from '@/app/pages/AdminPanelPage';
+import { AdminGiftsPage } from '@/app/pages/AdminGiftsPage';
 import Payment from '@/app/pages/Payment';
 import Ton from '@/app/pages/Ton';
 import History from '@/app/pages/History';
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'history', Component: HistoryPage },
       { path: 'profile', Component: ProfilePage },
       { path: 'admin', Component: AdminPanelPage },
+      { path: 'admin/gifts', Component: AdminGiftsPage },
       { path: 'payment', Component: Payment },
       { path: 'ton', Component: Ton },
      { path: 'payhistory', Component: History },
