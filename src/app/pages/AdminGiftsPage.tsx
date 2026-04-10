@@ -302,40 +302,40 @@ export function AdminGiftsPage() {
         <div className="space-y-3">
           <div className="flex items-end justify-between gap-3 px-0.5">
             <div>
-              <h2 className="text-lg font-bold tracking-tight">Barcha NFT giftlar</h2>
-              <p className="text-sm text-muted-foreground">{gifts.length} ta · 2 ustun</p>
+              <h2 className="text-base font-semibold">Barcha NFT giftlar</h2>
+              <p className="text-xs text-muted-foreground">{gifts.length} ta</p>
             </div>
             <Button
               type="button"
               variant="outline"
-              size="default"
-              className="shrink-0 gap-2 rounded-xl"
+              size="sm"
+              className="shrink-0 gap-1.5 rounded-lg text-xs"
               onClick={() => void loadGifts()}
               disabled={listLoading}
             >
-              <Loader2 className={`h-4 w-4 ${listLoading ? 'animate-spin' : 'hidden'}`} />
+              <Loader2 className={`h-3 w-3 ${listLoading ? 'animate-spin' : 'hidden'}`} />
               Yangilash
             </Button>
           </div>
 
           {listLoading ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border py-20 text-muted-foreground">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-sm font-medium">Yuklanmoqda...</p>
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p className="text-sm">Yuklanmoqda...</p>
             </div>
           ) : gifts.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-              <ShieldAlert className="h-12 w-12 opacity-35" />
-              <p className="text-sm font-medium">Hozircha NFT gift yo‘q</p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+              <ShieldAlert className="h-10 w-10 opacity-40" />
+              <p className="text-sm">Hozircha NFT gift yo‘q</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-2.5">
               {gifts.map((g) => (
                 <div
                   key={g.id}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-md ring-1 ring-black/5 transition-all hover:shadow-lg hover:ring-primary/25 dark:ring-white/10"
+                  className="flex flex-col overflow-hidden rounded-xl border border-border/50 transition-all hover:border-border"
                 >
-                  <div className="relative aspect-[3/4] w-full bg-gradient-to-b from-muted/60 to-muted/20">
+                  <div className="relative aspect-square w-full bg-accent/20">
                     {g.photo ? (
                       <img
                         src={g.photo}
@@ -345,108 +345,101 @@ export function AdminGiftsPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
-                        <Gift className="h-16 w-16 text-muted-foreground/35" />
+                        <Gift className="h-10 w-10 text-muted-foreground/30" />
                       </div>
                     )}
-                    <div className="absolute left-2 top-2 rounded-lg bg-background/85 px-2 py-1 text-xs font-bold shadow-sm backdrop-blur-sm">
+                    <div className="absolute left-1.5 top-1.5 rounded-md bg-background/80 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm">
                       #{g.id}
                     </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-3 p-3 sm:p-4">
-                    <div className="min-w-0 space-y-1">
-                      <p
-                        className="line-clamp-2 text-sm font-semibold leading-snug sm:text-base"
-                        title={formatNftName(g.nft_id)}
-                      >
-                        {formatNftName(g.nft_id)}
-                      </p>
-                      <p
-                        className="line-clamp-1 font-mono text-[10px] text-muted-foreground sm:text-xs"
-                        title={g.nft_id}
-                      >
-                        {g.nft_id}
-                      </p>
-                      {g.link ? (
-                        <a
-                          href={g.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline sm:text-sm"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                          Telegramda ochish
-                        </a>
-                      ) : null}
-                    </div>
+                  <div className="h-px bg-border/30" />
 
-                    <div>
-                      <p className="mb-2 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Narx (UZS)
-                      </p>
-                      <div className="flex items-stretch gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-12 w-12 shrink-0 rounded-xl p-0 sm:h-14 sm:w-14"
-                          onClick={() => bumpPrice(g.id, -5000)}
-                        >
-                          <Minus className="h-5 w-5" />
-                        </Button>
-                        <Input
-                          type="number"
-                          min={0}
-                          className="h-12 min-w-0 flex-1 rounded-xl border-2 text-center text-base font-bold tabular-nums sm:h-14 sm:text-lg"
-                          value={draftPrices[g.id] ?? g.price}
-                          onChange={(e) =>
-                            setDraftPrices((p) => ({
-                              ...p,
-                              [g.id]: Number(e.target.value) || 0,
-                            }))
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-12 w-12 shrink-0 rounded-xl p-0 sm:h-14 sm:w-14"
-                          onClick={() => bumpPrice(g.id, 5000)}
-                        >
-                          <Plus className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
+                  <div className="flex flex-1 flex-col space-y-1.5 p-2.5">
+                    <p
+                      className="truncate text-xs font-semibold leading-tight"
+                      title={formatNftName(g.nft_id)}
+                    >
+                      {formatNftName(g.nft_id)}
+                    </p>
+                    <p className="truncate text-[10px] text-muted-foreground/70" title={g.nft_id}>
+                      {g.model != null && g.backdrop != null
+                        ? `${g.model} · ${g.backdrop}`
+                        : g.nft_id}
+                    </p>
 
-                    <div className="mt-auto flex flex-col gap-2">
+                    {g.link ? (
+                      <a
+                        href={g.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        Link
+                      </a>
+                    ) : null}
+
+                    <div className="flex items-center gap-1 pt-0.5">
                       <Button
                         type="button"
-                        size="lg"
-                        className="h-12 w-full gap-2 rounded-xl text-base font-semibold sm:h-14"
-                        disabled={savingId === g.id}
-                        onClick={() => void savePrice(g.id)}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 shrink-0 rounded-lg p-0"
+                        onClick={() => bumpPrice(g.id, -1000)}
                       >
-                        {savingId === g.id ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Save className="h-5 w-5" />
-                        )}
-                        Saqlash
+                        <Minus className="h-3.5 w-3.5" />
                       </Button>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="h-8 min-w-0 flex-1 rounded-lg px-1 text-center text-xs font-bold tabular-nums"
+                        value={draftPrices[g.id] ?? g.price}
+                        onChange={(e) =>
+                          setDraftPrices((p) => ({
+                            ...p,
+                            [g.id]: Number(e.target.value) || 0,
+                          }))
+                        }
+                      />
                       <Button
                         type="button"
-                        size="lg"
-                        variant="destructive"
-                        className="h-11 w-full gap-2 rounded-xl font-semibold"
-                        disabled={deletingId === g.id}
-                        onClick={() => void deleteGift(g.id)}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 shrink-0 rounded-lg p-0"
+                        onClick={() => bumpPrice(g.id, 1000)}
                       >
-                        {deletingId === g.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                        O‘chirish
+                        <Plus className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+
+                    <Button
+                      type="button"
+                      className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold"
+                      disabled={savingId === g.id}
+                      onClick={() => void savePrice(g.id)}
+                    >
+                      {savingId === g.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      Saqlash
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold"
+                      disabled={deletingId === g.id}
+                      onClick={() => void deleteGift(g.id)}
+                    >
+                      {deletingId === g.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      O‘chirish
+                    </Button>
                   </div>
                 </div>
               ))}
