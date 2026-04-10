@@ -69,6 +69,22 @@ export function ProfilePage() {
   const totalStarsSpent = orders?.reduce((sum, order) => sum + (Number(order.amount) || 0), 0) || 0;
   const isAdmin = !!apiUser?.is_admin;
 
+  const HELP_TELEGRAM_URL = 'https://t.me/moliyachi_menejer';
+  const openHelpTelegram = () => {
+    const tg = window.Telegram?.WebApp;
+    try {
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(HELP_TELEGRAM_URL);
+      } else if (tg?.openLink) {
+        tg.openLink(HELP_TELEGRAM_URL, { try_instant_view: false });
+      } else {
+        window.open(HELP_TELEGRAM_URL, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      window.open(HELP_TELEGRAM_URL, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const menuItems = [
     {
       icon: Settings,
@@ -76,7 +92,7 @@ export function ProfilePage() {
       onClick: () => setSettingsOpen((v) => !v),
       badge: null,
     },
-    { icon: HelpCircle, label: 'Yordam', onClick: () => {}, badge: null },
+    { icon: HelpCircle, label: 'Yordam', onClick: openHelpTelegram, badge: null },
     { icon: Mail, label: 'Biz bilan ulanish', onClick: () => {}, badge: null },
   ];
 
