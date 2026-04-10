@@ -25,11 +25,11 @@ const GIFT_LIST_API = 'https://tezpremium.uz/uzbstar/giftlar.php';
 /** Qo‘shish: POST JSON { initData, url, price } */
 const NFT_GIFT_ADD_API = 'https://tezpremium.uz/MilliyDokon/nft/add.php';
 
-/** Narxni yangilash: POST JSON { initData, gift_id, price } — backendni alohida yozishingiz kerak */
-const NFT_GIFT_PRICE_API = 'https://tezpremium.uz/MilliyDokon/control/nft_gift_price.php';
+/** Narxni yangilash: POST JSON { initData, id | gift_id, price } */
+const NFT_GIFT_EDIT_API = 'https://tezpremium.uz/MilliyDokon/nft/edit.php';
 
-/** O'chirish: POST JSON { initData, gift_id } — backendni alohida yozishingiz kerak */
-const NFT_GIFT_DELETE_API = 'https://tezpremium.uz/MilliyDokon/control/nft_gift_delete.php';
+/** O'chirish: POST JSON { initData, id } */
+const NFT_GIFT_DELETE_API = 'https://tezpremium.uz/MilliyDokon/nft/delete.php';
 
 type NftGiftRow = {
   id: number;
@@ -61,11 +61,12 @@ async function postWithInitData(
       ...body,
     }),
   });
-  const data = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return {
     ok: !!data.ok,
     message: typeof data.message === 'string' ? data.message : undefined,
     status: res.status,
+    raw: data,
   };
 }
 
@@ -185,20 +186,26 @@ export function AdminGiftsPage() {
     }
     setSavingId(id);
     try {
-      const { ok, message } = await postWithInitData(NFT_GIFT_PRICE_API, initData, {
+      const { ok, message, raw } = await postWithInitData(NFT_GIFT_EDIT_API, initData, {
+        id,
         gift_id: id,
         price,
       });
       if (ok) {
-        toast.success('Narx saqlandi');
+        const newP = raw?.new_price;
+        const oldP = raw?.old_price;
+        const desc =
+          typeof newP === 'number' || typeof newP === 'string'
+            ? typeof oldP === 'number' || typeof oldP === 'string'
+              ? `${Number(oldP).toLocaleString('uz-UZ')} → ${Number(newP).toLocaleString('uz-UZ')} UZS`
+              : `${Number(newP).toLocaleString('uz-UZ')} UZS`
+            : undefined;
+        toast.success(typeof raw?.message === 'string' ? raw.message : 'Narx yangilandi', {
+          description: desc,
+        });
         await loadGifts();
       } else {
-        toast.error(message || 'Narx saqlanmadi', {
-          description:
-            message?.includes('404') || !message
-              ? 'Backendda nft_gift_price.php (yoki mos endpoint) bo‘lishi kerak.'
-              : undefined,
-        });
+        toast.error(message || 'Narx saqlanmadi');
       }
     } catch {
       toast.error('Server xatosi');
@@ -212,16 +219,16 @@ export function AdminGiftsPage() {
     if (!initData) return;
     setDeletingId(id);
     try {
-      const { ok, message } = await postWithInitData(NFT_GIFT_DELETE_API, initData, {
-        gift_id: id,
+      const { ok, message, raw } = await postWithInitData(NFT_GIFT_DELETE_API, initData, {
+        id,
       });
       if (ok) {
-        toast.success('Gift o‘chirildi');
+        toast.success(
+          typeof raw?.message === 'string' ? raw.message : 'Gift o‘chirildi'
+        );
         await loadGifts();
       } else {
-        toast.error(message || 'O‘chirib bo‘lmadi', {
-          description: !message ? 'Backendda nft_gift_delete.php bo‘lishi kerak.' : undefined,
-        });
+        toast.error(message || 'O‘chirib bo‘lmadi');
       }
     } catch {
       toast.error('Server xatosi');
