@@ -9,18 +9,16 @@ import SplashScreen from "@/app/components/SplashScreen";
 import { WebAppMaintenanceScreen } from '@/app/components/WebAppMaintenanceScreen';
 
 function AppRoutes() {
-  const { loading, statusLoading, isFeatureEnabled, fetchServiceStatus } = useTelegram();
+  const { loading, isFeatureEnabled, fetchServiceStatus } = useTelegram();
   const [maintRetrying, setMaintRetrying] = useState(false);
 
-  const webappBlocked =
-    !loading &&
-    !statusLoading &&
-    !isFeatureEnabled('webapp');
+  /** statusLoading ni bu yerga qo‘shmaslik kerak: retryda u true bo‘lsa ekran yopilib home ochilgandek bo‘lardi */
+  const webappBlocked = !loading && !isFeatureEnabled('webapp');
 
   const handleMaintenanceRetry = async () => {
     setMaintRetrying(true);
     try {
-      await fetchServiceStatus({ silent: false });
+      await fetchServiceStatus({ silent: true });
     } finally {
       setMaintRetrying(false);
     }
@@ -30,7 +28,7 @@ function AppRoutes() {
     return (
       <WebAppMaintenanceScreen
         onRetry={handleMaintenanceRetry}
-        retrying={maintRetrying || statusLoading}
+        retrying={maintRetrying}
       />
     );
   }
