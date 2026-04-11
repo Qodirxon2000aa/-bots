@@ -250,30 +250,6 @@ export function BuyStarsPage() {
             <span>Stars limiti tekshirilmoqda…</span>
           </MessageBox>
         )}
-        {starsLimitLoadFailed && (
-          <MessageBox type="error">
-            <div className="space-y-2">
-              <span>
-                <strong>Stars limitini yuklab bo&apos;lmadi</strong> (tarmoq yoki brauzer bloklari). API
-                javobi olinmagan — bu <strong>server limiti 0</strong> bilan bir xil emas.
-              </span>
-              <p className="text-xs text-muted-foreground">
-                Telegram Mini App boshqa domen bo&apos;lsa, serverda{' '}
-                <code className="text-[11px]">calculate.php</code> uchun{' '}
-                <strong>CORS</strong> (Access-Control-Allow-Origin) qo&apos;shilishi kerak.
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => void fetchStarsLimits({ silent: false })}
-              >
-                Qayta yuklash
-              </Button>
-            </div>
-          </MessageBox>
-        )}
         {!starsSalesOn && starsLimitReady && (
           <MessageBox type="error">
             <span>
