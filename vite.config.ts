@@ -4,16 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  server: {
-    proxy: {
-      // Lokal dev: calculate.php va boshqa MilliyDokon API larni CORSsiz chaqirish
-      '/MilliyDokon': {
-        target: 'https://tezpremium.uz',
-        changeOrigin: true,
-        secure: true,
-      },
-    },
-  },
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

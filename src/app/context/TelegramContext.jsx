@@ -4,11 +4,7 @@ import { toast } from "sonner";
 const TelegramContext = createContext(null);
 
 const SERVICE_STATUS_API = "https://tezpremium.uz/MilliyDokon/control/status.php";
-/** Production: to'g'ridan-to'g'ri API. Dev: Vite proxy orqali (CORS muammosiz) */
-const STARS_CALCULATE_URL =
-  import.meta.env.DEV
-    ? "/MilliyDokon/starsapi/calculate.php"
-    : "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
+const STARS_CALCULATE_URL = "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
 
 function isStarsCalculateOkFlag(v) {
   return v === true || v === "true" || v === 1 || v === "1";

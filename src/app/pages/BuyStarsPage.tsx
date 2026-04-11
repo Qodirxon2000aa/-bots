@@ -27,11 +27,9 @@ export function BuyStarsPage() {
     isFeatureEnabled,
     starsMaxAmount,
     starsCalculateLoading,
-    fetchStarsLimits,
   } = useTelegram();
   const starsServiceOn = isFeatureEnabled('stars');
   const starsLimitReady = starsMaxAmount !== null;
-  const starsLimitLoadFailed = !starsCalculateLoading && !starsLimitReady;
   const starsSalesOn = starsServiceOn && starsLimitReady && starsMaxAmount > 0;
   const effectiveMaxStars =
     starsLimitReady && starsMaxAmount > 0
