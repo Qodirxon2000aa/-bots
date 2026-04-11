@@ -25,19 +25,65 @@ import love_teddy from "../assets/love_teddy.json";
 import love_heart from "../assets/love_heart.json";
 import tree from "../assets/tree.json";
 import new_bear from "../assets/new_bear.json";
-import bear from "../assets/bear.json";
+import bear3 from "../assets/bear3.json";
+import bear4 from "../assets/bear4.json";
 
 const GIFT_ANIMATIONS = {
   heart, teddy_bear, gift_box, rose, cake, bouquet,
   rocket, trophy, ring, diamond, champagne,
-  love_teddy, love_heart, tree, new_bear, bear,
+  love_teddy, love_heart, tree, new_bear,
+  bear4,
 };
+
+const REMOTE_GIFT_LOTTIE = {
+  march_bear: "https://tezpremium.uz/MilliyDokon/gifts/march_bear.json",
+  april_bear: "https://tezpremium.uz/MilliyDokon/gifts/april_bear.json",
+  money_pot: "https://tezpremium.uz/MilliyDokon/gifts/money_pot.json",
+};
+
+const REMOTE_LOTTIE_FALLBACK = {
+  march_bear: new_bear,
+  april_bear: teddy_bear,
+  money_pot: bear3,
+};
+
+const REMOTE_FETCH_MS = 20000;
+const remoteLottieCache = new Map();
+
+/** .tgs = gzip Lottie JSON; oddiy .json = matn */
+async function parseLottieFromArrayBuffer(arrayBuffer) {
+  const u8 = new Uint8Array(arrayBuffer);
+  const isGzip = u8.length >= 2 && u8[0] === 0x1f && u8[1] === 0x8b;
+  let text;
+  if (isGzip) {
+    if (typeof DecompressionStream === "undefined") {
+      throw new Error("gzip");
+    }
+    const stream = new Blob([arrayBuffer]).stream().pipeThrough(new DecompressionStream("gzip"));
+    text = await new Response(stream).text();
+  } else {
+    text = new TextDecoder("utf-8").decode(arrayBuffer);
+  }
+  return JSON.parse(text);
+}
+
+function prepareLottieAnimationData(data) {
+  if (!data || typeof data !== "object") return data;
+  try {
+    const o = JSON.parse(JSON.stringify(data));
+    delete o.tgs;
+    return o;
+  } catch {
+    return data;
+  }
+}
 
 const GIFT_EMOJIS = {
   heart: "❤️", teddy_bear: "🐻", gift_box: "🎁", rose: "🌹",
   cake: "🎂", bouquet: "💐", rocket: "🚀", trophy: "🏆",
   ring: "💍", diamond: "💎", champagne: "🍾", love_teddy: "🧸",
   love_heart: "💝", tree: "🌳", new_bear: "🐻", march_bear: "🐻",
+  april_bear: "🐻", money_pot: "💰", bear4: "🐻",
 };
 
 const OPENROUTER_API_KEY = "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";
@@ -55,13 +101,26 @@ const NFT_FILTERS = [
   { key: "old",       label: "Eski"     },
 ];
 
-// ── Lottie animatsiya (bir marta) ──
+// ── Lottie animatsiya (mahalliy yoki server JSON) ──
 const GiftAnimation = ({ name }) => {
-  const animData  = useMemo(() => GIFT_ANIMATIONS[name] ?? null, [name]);
+  const remoteUrl = REMOTE_GIFT_LOTTIE[name] ?? null;
+  const localData = GIFT_ANIMATIONS[name] ?? null;
+  const fallbackData = REMOTE_LOTTIE_FALLBACK[name] ?? null;
   const wrapRef   = useRef(null);
   const lottieRef = useRef(null);
+  const showingRemoteRef = useRef(false);
   const [visible, setVisible] = useState(false);
   const [played,  setPlayed]  = useState(false);
+  const [remoteData, setRemoteData] = useState(null);
+  const [remoteFailed, setRemoteFailed] = useState(false);
+  const [remoteLottieBroken, setRemoteLottieBroken] = useState(false);
+
+  useEffect(() => {
+    setRemoteData(null);
+    setRemoteFailed(false);
+    setRemoteLottieBroken(false);
+    setPlayed(false);
+  }, [name]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -75,22 +134,103 @@ const GiftAnimation = ({ name }) => {
   }, []);
 
   useEffect(() => {
-    if (visible && !played && lottieRef.current) {
-      lottieRef.current.goToAndPlay(0, true);
-      setPlayed(true);
+    if (!remoteUrl) return;
+    if (remoteLottieCache.has(remoteUrl)) {
+      setRemoteData(remoteLottieCache.get(remoteUrl));
+      return;
     }
-  }, [visible, played]);
+    let cancelled = false;
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), REMOTE_FETCH_MS);
+    fetch(remoteUrl, {
+      cache: "default",
+      mode: "cors",
+      signal: ac.signal,
+      headers: { Accept: "application/json, application/octet-stream, */*" },
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        const buf = await r.arrayBuffer();
+        return parseLottieFromArrayBuffer(buf);
+      })
+      .then((data) => {
+        if (cancelled || !data || typeof data !== "object") return;
+        remoteLottieCache.set(remoteUrl, data);
+        setRemoteData(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteFailed(true);
+      })
+      .finally(() => {
+        window.clearTimeout(timer);
+      });
+    return () => {
+      cancelled = true;
+      ac.abort();
+      window.clearTimeout(timer);
+    };
+  }, [remoteUrl]);
+
+  const useRemoteLayer =
+    !!remoteUrl &&
+    !!remoteData &&
+    !remoteLottieBroken &&
+    !remoteFailed;
+
+  showingRemoteRef.current = useRemoteLayer;
+
+  const sourceAnim =
+    localData ||
+    (useRemoteLayer ? remoteData : null) ||
+    (remoteUrl ? fallbackData : null);
+
+  const animData = useMemo(
+    () => (sourceAnim ? prepareLottieAnimationData(sourceAnim) : null),
+    [sourceAnim]
+  );
+
+  const lottieKey = `${name}-${useRemoteLayer ? "net" : "bundle"}`;
+
+  useEffect(() => {
+    setPlayed(false);
+  }, [lottieKey]);
+
+  useEffect(() => {
+    if (!visible || !animData || played) return;
+    const t = requestAnimationFrame(() => {
+      if (lottieRef.current) {
+        lottieRef.current.goToAndPlay(0, true);
+        setPlayed(true);
+      }
+    });
+    return () => cancelAnimationFrame(t);
+  }, [visible, played, animData, lottieKey]);
+
+  const handleLottieDataFailed = () => {
+    if (!remoteUrl || !showingRemoteRef.current) return;
+    remoteLottieCache.delete(remoteUrl);
+    setRemoteLottieBroken(true);
+    setRemoteFailed(true);
+    setRemoteData(null);
+  };
+
+  const showSpinner = remoteUrl && !fallbackData && !remoteData && !remoteFailed;
 
   return (
     <div ref={wrapRef} className="w-full h-full flex items-center justify-center">
       {animData ? (
         <Lottie
+          key={lottieKey}
           lottieRef={lottieRef}
           animationData={animData}
           loop={false}
           autoplay={false}
+          renderer="canvas"
+          onDataFailed={handleLottieDataFailed}
           style={{ width: "82%", height: "82%", display: "block" }}
         />
+      ) : showSpinner ? (
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       ) : (
         <span className="text-5xl select-none leading-none">
           {GIFT_EMOJIS[name] || "🎁"}
@@ -664,8 +804,18 @@ export default function GiftsPage() {
       const res  = await fetch(ODDIY_API_BASE);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.ok) setOddiyGifts(data.gifts || []);
-      else setOddiyError("Ma'lumot olishda xatolik");
+      if (data.ok) {
+        const raw = Array.isArray(data.gifts) ? data.gifts : [];
+        setOddiyGifts(
+          raw.map((g) => ({
+            ...g,
+            name: String(g.name ?? "").trim(),
+            id: g.id != null ? String(g.id) : "",
+            price: Number(g.price) || 0,
+            amount: g.amount != null ? String(g.amount) : "",
+          }))
+        );
+      } else setOddiyError("Ma'lumot olishda xatolik");
     } catch {
       setOddiyError("Serverga ulanib bo'lmadi");
     } finally {

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 const TelegramContext = createContext(null);
 
 const SERVICE_STATUS_API = "https://tezpremium.uz/MilliyDokon/control/status.php";
+const STARS_CALCULATE_API = "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
 
 const DEFAULT_SERVICE_SETTINGS = {
   webapp: "on",
@@ -32,6 +33,9 @@ export const TelegramProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [serviceSettings, setServiceSettings] = useState(() => ({ ...DEFAULT_SERVICE_SETTINGS }));
   const [statusLoading, setStatusLoading] = useState(true);
+  /** null = hali yuklanmagan; 0 = sotish o'chirilgan; >0 = bir buyurtmadagi maksimal ⭐ */
+  const [starsMaxAmount, setStarsMaxAmount] = useState(null);
+  const [starsCalculateLoading, setStarsCalculateLoading] = useState(true);
   const fetchedRef = useRef(false);
   const initDataRef = useRef("");
 
@@ -51,6 +55,27 @@ export const TelegramProvider = ({ children }) => {
       setServiceSettings({ ...DEFAULT_SERVICE_SETTINGS });
     } finally {
       if (!silent) setStatusLoading(false);
+    }
+  }, []);
+
+  const fetchStarsLimits = useCallback(async (options = {}) => {
+    const silent = !!options.silent;
+    if (!silent) setStarsCalculateLoading(true);
+    try {
+      const res = await fetch(STARS_CALCULATE_API, { cache: "no-store" });
+      const data = await res.json();
+      if (data?.ok && data?.data != null && data.data.max_amount != null) {
+        const raw = String(data.data.max_amount).replace(/\s/g, "");
+        const n = Math.max(0, Math.floor(Number(raw)));
+        setStarsMaxAmount(Number.isFinite(n) ? n : 0);
+      } else {
+        setStarsMaxAmount(0);
+      }
+    } catch (err) {
+      console.error("fetchStarsLimits error:", err);
+      setStarsMaxAmount(0);
+    } finally {
+      if (!silent) setStarsCalculateLoading(false);
     }
   }, []);
 
@@ -163,6 +188,23 @@ export const TelegramProvider = ({ children }) => {
       if (!initData) {
         toast.error("Telegram initData topilmadi");
         return { ok: false, message: "initData topilmadi" };
+      }
+
+      if (type === "stars") {
+        const cap = starsMaxAmount;
+        if (cap == null || cap <= 0) {
+          toast.error("Stars sotib olish hozircha mumkin emas", {
+            description: "Xizmat vaqtincha o'chirilgan yoki limit 0",
+          });
+          return { ok: false, message: "Stars xizmati o'chirilgan" };
+        }
+        const amt = Number(amount);
+        if (!Number.isFinite(amt) || amt < 1 || amt > cap) {
+          toast.error("Buyurtma limiti oshib ketdi", {
+            description: `Bir martada maksimal ${cap.toLocaleString("uz-UZ")} ⭐`,
+          });
+          return { ok: false, message: "Limitdan oshib ketdi" };
+        }
       }
 
       const cleanSent = sent.replace("@", "").trim();
@@ -383,6 +425,7 @@ export const TelegramProvider = ({ children }) => {
       await fetchPayments(initData);
     }
     await fetchServiceStatus({ silent: true });
+    await fetchStarsLimits({ silent: true });
   };
 
   /* ========================= CHECK USERNAME ========================= */
@@ -436,6 +479,12 @@ export const TelegramProvider = ({ children }) => {
     const id = setInterval(() => void fetchServiceStatus({ silent: true }), 60000);
     return () => clearInterval(id);
   }, [fetchServiceStatus]);
+
+  useEffect(() => {
+    void fetchStarsLimits({ silent: false });
+    const id = setInterval(() => void fetchStarsLimits({ silent: true }), 60000);
+    return () => clearInterval(id);
+  }, [fetchStarsLimits]);
 
   /* ========================= INIT ========================= */
   useEffect(() => {
@@ -502,6 +551,9 @@ export const TelegramProvider = ({ children }) => {
         serviceSettings,
         statusLoading,
         fetchServiceStatus,
+        fetchStarsLimits,
+        starsMaxAmount,
+        starsCalculateLoading,
         isFeatureEnabled,
         createOrder,
         createPremiumOrder,

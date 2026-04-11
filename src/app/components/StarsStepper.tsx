@@ -23,10 +23,11 @@ export function StarsStepper({ value, onChange, min = 1, max = 100000 }: StarsSt
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value) || 0;
-    if (newValue >= min && newValue <= max) {
-      onChange(newValue);
-    }
+    const raw = e.target.value;
+    if (raw === '') return;
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed)) return;
+    onChange(Math.min(max, Math.max(min, parsed)));
   };
 
   return (

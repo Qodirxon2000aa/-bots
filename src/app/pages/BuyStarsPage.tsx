@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '@/app/context/AppContext';
 import { useTelegram } from '@/app/context/TelegramContext';
@@ -18,8 +18,24 @@ const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 export function BuyStarsPage() {
   const navigate = useNavigate();
   // user ni ham olamiz — Telegram WebApp dan kelgan ma'lumotlar
-  const { apiUser, user, createOrder, refreshUser, checkUsername, isFeatureEnabled } = useTelegram();
+  const {
+    apiUser,
+    user,
+    createOrder,
+    refreshUser,
+    checkUsername,
+    isFeatureEnabled,
+    starsMaxAmount,
+    starsCalculateLoading,
+  } = useTelegram();
   const starsServiceOn = isFeatureEnabled('stars');
+  const starsLimitReady = starsMaxAmount !== null;
+  const starsSalesOn = starsServiceOn && starsLimitReady && starsMaxAmount > 0;
+  const effectiveMaxStars = starsLimitReady && starsMaxAmount > 0 ? starsMaxAmount : 100000;
+  const presetAmounts = useMemo(
+    () => PRESET_AMOUNTS.filter((a) => a <= effectiveMaxStars),
+    [effectiveMaxStars]
+  );
   
   const [username, setUsername] = useState('');
   const [stars, setStars] = useState(100);
@@ -64,14 +80,28 @@ export function BuyStarsPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!starsLimitReady || starsMaxAmount <= 0) return;
+    setStars((s) => (s > starsMaxAmount ? starsMaxAmount : s));
+  }, [starsLimitReady, starsMaxAmount]);
+
+  useEffect(() => {
+    if (!starsLimitReady || starsMaxAmount <= 0) return;
+    setSelectedPreset((p) => (p != null && p > starsMaxAmount ? null : p));
+  }, [starsLimitReady, starsMaxAmount]);
+
   const handleStarsChange = (value) => {
-    setStars(value);
-    setSelectedPreset(PRESET_AMOUNTS.includes(value) ? value : null);
+    const cap = starsLimitReady && starsMaxAmount > 0 ? starsMaxAmount : value;
+    const v = Math.min(value, cap);
+    setStars(v);
+    setSelectedPreset(PRESET_AMOUNTS.includes(v) ? v : null);
   };
 
   const handlePresetClick = (amount) => {
-    setStars(amount);
-    setSelectedPreset(amount);
+    const cap = starsLimitReady && starsMaxAmount > 0 ? starsMaxAmount : amount;
+    const a = Math.min(amount, cap);
+    setStars(a);
+    setSelectedPreset(a);
   };
 
   // Username tekshirish funksiyasi
@@ -113,8 +143,14 @@ export function BuyStarsPage() {
 
   const handleConfirmPayment = async () => {
     if (!username) return;
-    if (!starsServiceOn) {
-      toast.error("Xizmat vaqtincha o'chirilgan");
+    if (!starsSalesOn) {
+      toast.error("Xizmat vaqtincha o'chirilgan yoki limit mavjud emas");
+      return;
+    }
+    if (stars > starsMaxAmount) {
+      toast.error('Buyurtma limiti oshib ketdi', {
+        description: `Bir martada maksimal ${starsMaxAmount.toLocaleString('uz-UZ')} ⭐`,
+      });
       return;
     }
     if (!hasEnoughBalance) {
@@ -204,11 +240,25 @@ export function BuyStarsPage() {
       />
 
       <div className="p-4 space-y-6">
-        {!starsServiceOn && (
+        {starsCalculateLoading && !starsLimitReady && (
+          <MessageBox type="info">
+            <span>Stars limiti tekshirilmoqda…</span>
+          </MessageBox>
+        )}
+        {!starsSalesOn && starsLimitReady && (
           <MessageBox type="error">
             <span>
               Stars sotib olish hozircha mumkin emas.{' '}
-              <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+              {starsMaxAmount === 0 ? (
+                <>
+                  <strong>Server limiti 0</strong> — xizmat vaqtincha o&apos;chirilgan. Keyinroq urinib
+                  ko&apos;ring.
+                </>
+              ) : (
+                <>
+                  <strong>Xizmat vaqtincha o&apos;chirilgan</strong> — keyinroq urinib ko&apos;ring.
+                </>
+              )}
             </span>
           </MessageBox>
         )}
@@ -233,6 +283,12 @@ export function BuyStarsPage() {
               )}
             </div>
             <div className="text-xs">Sizning balansingiz: <strong>{new Intl.NumberFormat('uz-UZ').format(userBalance)} UZS</strong></div>
+            {starsSalesOn && (
+              <div className="text-xs pt-1">
+                Bir buyurtmada maksimal:{' '}
+                <strong>{new Intl.NumberFormat('uz-UZ').format(starsMaxAmount)} ⭐</strong>
+              </div>
+            )}
           </div>
         </MessageBox>
 
@@ -317,7 +373,7 @@ export function BuyStarsPage() {
           </label>
 
           <ChipGroup>
-            {PRESET_AMOUNTS.map((amount) => (
+            {presetAmounts.map((amount) => (
               <Chip
                 key={amount}
                 selected={selectedPreset === amount}
@@ -327,12 +383,18 @@ export function BuyStarsPage() {
               </Chip>
             ))}
           </ChipGroup>
+          {starsSalesOn && presetAmounts.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Tanlangan limitdan kichik tayyor miqdor yo&apos;q — quyidagi maydondan 1–
+              {new Intl.NumberFormat('uz-UZ').format(starsMaxAmount)} ⭐ kiriting.
+            </p>
+          )}
 
           <StarsStepper
             value={stars}
             onChange={handleStarsChange}
             min={1}
-            max={100000}
+            max={effectiveMaxStars}
           />
         </div>
 
@@ -348,11 +410,19 @@ export function BuyStarsPage() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!starsServiceOn || !canProceed || !hasEnoughBalance || isLoadingRate}
+            disabled={
+              !starsSalesOn ||
+              starsCalculateLoading ||
+              !canProceed ||
+              !hasEnoughBalance ||
+              isLoadingRate
+            }
             onClick={() => setShowConfirmDialog(true)}
           >
             <Sparkles className="w-5 h-5" />
-            {!starsServiceOn
+            {starsCalculateLoading && !starsLimitReady
+              ? 'Limit yuklanmoqda…'
+              : !starsSalesOn
               ? "Xizmat vaqtincha o'chirilgan"
               : isLoadingRate
                 ? 'Yuklanmoqda...'
