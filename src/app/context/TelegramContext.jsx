@@ -64,8 +64,10 @@ export const TelegramProvider = ({ children }) => {
     try {
       const res = await fetch(STARS_CALCULATE_API, { cache: "no-store" });
       const data = await res.json();
-      if (data?.ok && data?.data != null && data.data.max_amount != null) {
-        const raw = String(data.data.max_amount).replace(/\s/g, "");
+      // Faqat data.max_amount: calculate.php dagi balance/ton_amount limit uchun ishlatilmaydi
+      const maxRaw = data?.ok && data?.data != null ? data.data.max_amount : null;
+      if (maxRaw != null && maxRaw !== "") {
+        const raw = String(maxRaw).replace(/\s/g, "");
         const n = Math.max(0, Math.floor(Number(raw)));
         setStarsMaxAmount(Number.isFinite(n) ? n : 0);
       } else {
