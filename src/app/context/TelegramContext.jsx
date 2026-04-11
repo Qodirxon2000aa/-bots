@@ -4,7 +4,15 @@ import { toast } from "sonner";
 const TelegramContext = createContext(null);
 
 const SERVICE_STATUS_API = "https://tezpremium.uz/MilliyDokon/control/status.php";
-const STARS_CALCULATE_API = "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
+/** Production: to'g'ridan-to'g'ri API. Dev: Vite proxy orqali (CORS muammosiz) */
+const STARS_CALCULATE_URL =
+  import.meta.env.DEV
+    ? "/MilliyDokon/starsapi/calculate.php"
+    : "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
+
+function isStarsCalculateOkFlag(v) {
+  return v === true || v === "true" || v === 1 || v === "1";
+}
 
 const DEFAULT_SERVICE_SETTINGS = {
   webapp: "on",
@@ -62,20 +70,36 @@ export const TelegramProvider = ({ children }) => {
     const silent = !!options.silent;
     if (!silent) setStarsCalculateLoading(true);
     try {
-      const res = await fetch(STARS_CALCULATE_API, { cache: "no-store" });
-      const data = await res.json();
-      // Faqat data.max_amount: calculate.php dagi balance/ton_amount limit uchun ishlatilmaydi
-      const maxRaw = data?.ok && data?.data != null ? data.data.max_amount : null;
+      const res = await fetch(STARS_CALCULATE_URL, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      const rawText = await res.text();
+      let data = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch (parseErr) {
+        console.error("fetchStarsLimits: JSON emas yoki buzilgan", parseErr, rawText?.slice(0, 160));
+        setStarsMaxAmount(null);
+        return;
+      }
+      // Faqat data.max_amount; balance/ton_amount limit uchun ishlatilmaydi
+      if (!isStarsCalculateOkFlag(data?.ok)) {
+        setStarsMaxAmount(0);
+        return;
+      }
+      const maxRaw = data?.data != null ? data.data.max_amount : null;
       if (maxRaw != null && maxRaw !== "") {
-        const raw = String(maxRaw).replace(/\s/g, "");
-        const n = Math.max(0, Math.floor(Number(raw)));
+        const cleaned = String(maxRaw).replace(/\s/g, "");
+        const n = Math.max(0, Math.floor(Number(cleaned)));
         setStarsMaxAmount(Number.isFinite(n) ? n : 0);
       } else {
         setStarsMaxAmount(0);
       }
     } catch (err) {
+      // CORS / tarmoq: 0 deb chalkashtirmaymiz — server "limit 0" demagan
       console.error("fetchStarsLimits error:", err);
-      setStarsMaxAmount(0);
+      setStarsMaxAmount(null);
     } finally {
       if (!silent) setStarsCalculateLoading(false);
     }

@@ -27,11 +27,18 @@ export function BuyStarsPage() {
     isFeatureEnabled,
     starsMaxAmount,
     starsCalculateLoading,
+    fetchStarsLimits,
   } = useTelegram();
   const starsServiceOn = isFeatureEnabled('stars');
   const starsLimitReady = starsMaxAmount !== null;
+  const starsLimitLoadFailed = !starsCalculateLoading && !starsLimitReady;
   const starsSalesOn = starsServiceOn && starsLimitReady && starsMaxAmount > 0;
-  const effectiveMaxStars = starsLimitReady && starsMaxAmount > 0 ? starsMaxAmount : 100000;
+  const effectiveMaxStars =
+    starsLimitReady && starsMaxAmount > 0
+      ? starsMaxAmount
+      : starsCalculateLoading
+        ? 100000
+        : 1;
   const presetAmounts = useMemo(
     () => PRESET_AMOUNTS.filter((a) => a <= effectiveMaxStars),
     [effectiveMaxStars]
@@ -243,6 +250,30 @@ export function BuyStarsPage() {
         {starsCalculateLoading && !starsLimitReady && (
           <MessageBox type="info">
             <span>Stars limiti tekshirilmoqda…</span>
+          </MessageBox>
+        )}
+        {starsLimitLoadFailed && (
+          <MessageBox type="error">
+            <div className="space-y-2">
+              <span>
+                <strong>Stars limitini yuklab bo&apos;lmadi</strong> (tarmoq yoki brauzer bloklari). API
+                javobi olinmagan — bu <strong>server limiti 0</strong> bilan bir xil emas.
+              </span>
+              <p className="text-xs text-muted-foreground">
+                Telegram Mini App boshqa domen bo&apos;lsa, serverda{' '}
+                <code className="text-[11px]">calculate.php</code> uchun{' '}
+                <strong>CORS</strong> (Access-Control-Allow-Origin) qo&apos;shilishi kerak.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => void fetchStarsLimits({ silent: false })}
+              >
+                Qayta yuklash
+              </Button>
+            </div>
           </MessageBox>
         )}
         {!starsSalesOn && starsLimitReady && (
