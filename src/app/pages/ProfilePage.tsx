@@ -39,6 +39,13 @@ export function ProfilePage() {
     }
   };
 
+  const handleChiqish = () => {
+    const wa = window.Telegram?.WebApp;
+    if (wa && typeof wa.close === 'function') {
+      wa.close();
+    }
+  };
+
   // Telegram WebApp dan to'g'ridan-to'g'ri olish
   const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 
@@ -322,7 +329,11 @@ export function ProfilePage() {
         {/* Logout */}
         <Card className="border-destructive/20 bg-destructive/5">
           <CardContent className="pt-5">
-            <button className="w-full flex items-center justify-center gap-3 text-destructive font-medium py-2">
+            <button
+              type="button"
+              onClick={handleChiqish}
+              className="w-full flex items-center justify-center gap-3 text-destructive font-medium py-2"
+            >
               <LogOut className="w-5 h-5" />
               <span>Chiqish</span>
             </button>
