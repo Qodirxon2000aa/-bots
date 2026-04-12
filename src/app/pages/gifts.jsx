@@ -28,6 +28,8 @@ import new_bear from "../assets/new_bear.json";
 import bear3 from "../assets/bear3.json";
 import bear4 from "../assets/bear4.json";
 import egg_bear from "../assets/egg_bear.json";
+import march_bear from "../assets/march_bear.json";
+import money_pot from "../assets/money_pot.json";
 
 const GIFT_ANIMATIONS = {
   heart, teddy_bear, gift_box, rose, cake, bouquet,
@@ -35,21 +37,16 @@ const GIFT_ANIMATIONS = {
   love_teddy, love_heart, tree, new_bear,
   bear4,
   egg_bear,
-};
-
-// Eslatma: serverda ba'zan april_bear.json / money_pot.json fayllari nomi bilan almashib qolgan;
-// kartochkada to'g'ri animatsiya uchun URL lar nom bilan qarama-qarshi bog'langan.
-const REMOTE_GIFT_LOTTIE = {
-  march_bear: "https://tezpremium.uz/MilliyDokon/gifts/march_bear.json",
-  april_bear: "https://tezpremium.uz/MilliyDokon/gifts/money_pot.json",
-  money_pot: "https://tezpremium.uz/MilliyDokon/gifts/april_bear.json",
-};
-
-const REMOTE_LOTTIE_FALLBACK = {
-  march_bear: new_bear,
+  march_bear,
+  money_pot,
+  // bear3.json serverdagi april_bear.json bilan bir xil (qora april ayiq)
   april_bear: bear3,
-  money_pot: gift_box,
 };
+
+// Barcha asosiy oddiy gift Lottie lari mahalliy — Telegram WebView da remote fetch ishonchsiz.
+const REMOTE_GIFT_LOTTIE = {};
+
+const REMOTE_LOTTIE_FALLBACK = {};
 
 const REMOTE_FETCH_MS = 20000;
 const remoteLottieCache = new Map();

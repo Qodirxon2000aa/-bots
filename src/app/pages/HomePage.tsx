@@ -245,7 +245,7 @@ export function HomePage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Xizmatlar</p>
-                  <p className="text-2xl font-bold">{categories?.length || 0}</p>
+                  <p className="text-2xl font-bold">{categories?.length || 4}</p>
                 </div>
               </div>
             </CardContent>
