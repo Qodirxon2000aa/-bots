@@ -27,24 +27,28 @@ import tree from "../assets/tree.json";
 import new_bear from "../assets/new_bear.json";
 import bear3 from "../assets/bear3.json";
 import bear4 from "../assets/bear4.json";
+import egg_bear from "../assets/egg_bear.json";
 
 const GIFT_ANIMATIONS = {
   heart, teddy_bear, gift_box, rose, cake, bouquet,
   rocket, trophy, ring, diamond, champagne,
   love_teddy, love_heart, tree, new_bear,
   bear4,
+  egg_bear,
 };
 
+// Eslatma: serverda ba'zan april_bear.json / money_pot.json fayllari nomi bilan almashib qolgan;
+// kartochkada to'g'ri animatsiya uchun URL lar nom bilan qarama-qarshi bog'langan.
 const REMOTE_GIFT_LOTTIE = {
   march_bear: "https://tezpremium.uz/MilliyDokon/gifts/march_bear.json",
-  april_bear: "https://tezpremium.uz/MilliyDokon/gifts/april_bear.json",
-  money_pot: "https://tezpremium.uz/MilliyDokon/gifts/money_pot.json",
+  april_bear: "https://tezpremium.uz/MilliyDokon/gifts/money_pot.json",
+  money_pot: "https://tezpremium.uz/MilliyDokon/gifts/april_bear.json",
 };
 
 const REMOTE_LOTTIE_FALLBACK = {
   march_bear: new_bear,
-  april_bear: teddy_bear,
-  money_pot: bear3,
+  april_bear: bear3,
+  money_pot: gift_box,
 };
 
 const REMOTE_FETCH_MS = 20000;
@@ -84,6 +88,7 @@ const GIFT_EMOJIS = {
   ring: "💍", diamond: "💎", champagne: "🍾", love_teddy: "🧸",
   love_heart: "💝", tree: "🌳", new_bear: "🐻", march_bear: "🐻",
   april_bear: "🐻", money_pot: "💰", bear4: "🐻",
+  egg_bear: "🐻",
 };
 
 const OPENROUTER_API_KEY = "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";
