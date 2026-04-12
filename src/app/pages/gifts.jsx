@@ -88,6 +88,23 @@ const GIFT_EMOJIS = {
   egg_bear: "🐻",
 };
 
+/** Matn API dagidek; uslub faqat tanilgan type lar uchun */
+const ODDIY_TYPE_BADGE_STYLE = {
+  common:
+    "border-border/50 bg-background/75 text-muted-foreground shadow-sm shadow-black/5",
+  unique:
+    "border-violet-400/35 bg-gradient-to-br from-violet-600/92 via-fuchsia-600/88 to-purple-700/92 text-white shadow-md shadow-violet-500/25",
+};
+
+function oddiyGiftTypeBadge(typeRaw) {
+  const label = String(typeRaw ?? "").trim();
+  const key = label.toLowerCase();
+  const className =
+    ODDIY_TYPE_BADGE_STYLE[key] ??
+    "border-border/50 bg-muted/80 text-muted-foreground";
+  return { label: label || "—", className };
+}
+
 const OPENROUTER_API_KEY = "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";
 const NFT_API_BASE       = "https://tezpremium.uz/MilliyDokon/nft/list.php";
 const ODDIY_API_BASE     = "https://tezpremium.uz/MilliyDokon/gifts/info.php";
@@ -101,6 +118,12 @@ const NFT_FILTERS = [
   { key: "expensive", label: "Qimmat ↓" },
   { key: "new",       label: "Yangi"    },
   { key: "old",       label: "Eski"     },
+];
+
+const ODDIY_TYPE_FILTERS = [
+  { key: "all",    label: "Barcha"  },
+  { key: "common", label: "Common"  },
+  { key: "unique", label: "Unique"  },
 ];
 
 // ── Lottie animatsiya (mahalliy yoki server JSON) ──
@@ -769,6 +792,7 @@ export default function GiftsPage() {
 
   const [mainTab,      setMainTab]      = useState("nft");
   const [oddiyFilter,  setOddiyFilter]  = useState("cheap");
+  const [oddiyTypeFilter, setOddiyTypeFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [copiedId,     setCopiedId]     = useState(null);
   const [gifts,        setGifts]        = useState([]);
@@ -815,6 +839,7 @@ export default function GiftsPage() {
             id: g.id != null ? String(g.id) : "",
             price: Number(g.price) || 0,
             amount: g.amount != null ? String(g.amount) : "",
+            type: String(g.type ?? "").trim(),
           }))
         );
       } else setOddiyError("Ma'lumot olishda xatolik");
@@ -855,15 +880,28 @@ export default function GiftsPage() {
 
   const canBuy = (price) => userBalance >= price;
 
-  const oddiyList = useMemo(() =>
-    [...oddiyGifts].sort((a, b) =>
+  const oddiyList = useMemo(() => {
+    let list = [...oddiyGifts];
+    if (oddiyTypeFilter !== "all") {
+      list = list.filter(
+        (g) => String(g.type ?? "").trim().toLowerCase() === oddiyTypeFilter
+      );
+    }
+    list.sort((a, b) =>
       oddiyFilter === "cheap" ? a.price - b.price : b.price - a.price
-    ), [oddiyGifts, oddiyFilter]
-  );
+    );
+    return list;
+  }, [oddiyGifts, oddiyFilter, oddiyTypeFilter]);
 
   const minOddiyPrice = useMemo(() =>
     oddiyGifts.length > 0 ? Math.min(...oddiyGifts.map((g) => g.price)) : 0,
     [oddiyGifts]
+  );
+
+  const minVisibleOddiyPrice = useMemo(
+    () =>
+      oddiyList.length > 0 ? Math.min(...oddiyList.map((g) => g.price)) : 0,
+    [oddiyList]
   );
 
   const minNftPrice = useMemo(() =>
@@ -1107,7 +1145,7 @@ export default function GiftsPage() {
         {/* ══ ODDIY ══ */}
         {mainTab === "oddiy" && (
           <>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
               {[
                 { key: "cheap",     label: "Arzon ↑" },
                 { key: "expensive", label: "Qimmat ↓" },
@@ -1117,6 +1155,22 @@ export default function GiftsPage() {
                     ${oddiyFilter === f.key
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-accent/50 text-muted-foreground border-border hover:bg-accent"}`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+              {ODDIY_TYPE_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setOddiyTypeFilter(f.key)}
+                  className={`shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium transition-all border whitespace-nowrap
+                    ${oddiyTypeFilter === f.key
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-accent/50 text-muted-foreground border-border hover:bg-accent"}`}
+                >
                   {f.label}
                 </button>
               ))}
@@ -1151,7 +1205,7 @@ export default function GiftsPage() {
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground truncate">Eng arzon</p>
                     <p className="text-xl font-bold leading-none mt-0.5">
-                      {oddiyLoading || oddiyGifts.length === 0 ? "—" : minOddiyPrice.toLocaleString("uz-UZ")}
+                      {oddiyLoading || oddiyList.length === 0 ? "—" : minVisibleOddiyPrice.toLocaleString("uz-UZ")}
                     </p>
                   </div>
                 </div>
@@ -1198,13 +1252,19 @@ export default function GiftsPage() {
                       const affordable = canBuy(gift.price);
                       const canPurchase = affordable && giftServiceOn;
                       const dimCard = !affordable || !giftServiceOn;
+                      const typeBadge = oddiyGiftTypeBadge(gift.type);
                       return (
                         <div key={gift.id} className={`rounded-xl border overflow-hidden transition-all
                           ${dimCard ? "border-border/30 opacity-70" : "border-border/50"}`}>
                           <div className="relative w-full aspect-square bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center overflow-hidden">
+                            <span
+                              className={`pointer-events-none absolute top-2 right-2 z-30 max-w-[calc(100%-1rem)] truncate rounded-lg border px-2 py-0.5 text-[10px] font-semibold leading-tight backdrop-blur-md ${typeBadge.className}`}
+                            >
+                              {typeBadge.label}
+                            </span>
                             <GiftAnimation name={gift.name} />
                             {!giftServiceOn && (
-                              <div className="absolute inset-0 bg-background/60 flex items-center justify-center p-1">
+                              <div className="absolute inset-0 z-[5] bg-background/60 flex items-center justify-center p-1">
                                 <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
                                   <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
                                   <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight">Xizmat o&apos;chirilgan</span>
@@ -1212,7 +1272,7 @@ export default function GiftsPage() {
                               </div>
                             )}
                             {giftServiceOn && !affordable && (
-                              <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                              <div className="absolute inset-0 z-[5] bg-background/60 flex items-center justify-center">
                                 <div className="bg-background/90 rounded-lg px-2 py-1 flex items-center gap-1">
                                   <Wallet className="w-3 h-3 text-muted-foreground" />
                                   <span className="text-[10px] text-muted-foreground font-medium">Balans yetmaydi</span>
