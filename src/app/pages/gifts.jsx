@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { useTelegram } from "@/app/context/TelegramContext";
 import { TopBar } from "@/app/components/ui/TopBar";
 import { Card, CardContent } from "@/app/components/ui/Card";
-import Lottie from "lottie-react";
 import {
   Copy, Eye, ShoppingCart, Sparkles, CheckCircle2,
   Gift, Loader2, AlertCircle, RefreshCw, Wallet,
@@ -28,8 +27,8 @@ import new_bear from "../assets/new_bear.json";
 import bear3 from "../assets/bear3.json";
 import bear4 from "../assets/bear4.json";
 import egg_bear from "../assets/egg_bear.json";
-import march_bear from "../assets/march_bear.json";
 import money_pot from "../assets/money_pot.json";
+import march_bear from "../assets/march_bear.json";
 
 const GIFT_ANIMATIONS = {
   heart, teddy_bear, gift_box, rose, cake, bouquet,
@@ -37,13 +36,13 @@ const GIFT_ANIMATIONS = {
   love_teddy, love_heart, tree, new_bear,
   bear4,
   egg_bear,
-  march_bear,
   money_pot,
+  march_bear,
   // bear3.json serverdagi april_bear.json bilan bir xil (qora april ayiq)
   april_bear: bear3,
 };
 
-// Barcha asosiy oddiy gift Lottie lari mahalliy — Telegram WebView da remote fetch ishonchsiz.
+// march_bear — assets/march_bear.json rasmiy .tgs bilan bir xil (gzip yechilgan nusxa).
 const REMOTE_GIFT_LOTTIE = {};
 
 const REMOTE_LOTTIE_FALLBACK = {};
@@ -126,32 +125,53 @@ const ODDIY_TYPE_FILTERS = [
   { key: "unique", label: "Unique"  },
 ];
 
-// ── Lottie animatsiya (mahalliy yoki server JSON) ──
+function getCdnLottie() {
+  if (typeof window === "undefined") return null;
+  return window.lottie ?? null;
+}
+
+// ── Lottie animatsiya: index.html dagi lottie-web 5.12.2 (CDN) ──
 const GiftAnimation = ({ name }) => {
   const remoteUrl = REMOTE_GIFT_LOTTIE[name] ?? null;
   const localData = GIFT_ANIMATIONS[name] ?? null;
   const fallbackData = REMOTE_LOTTIE_FALLBACK[name] ?? null;
-  const wrapRef   = useRef(null);
-  const lottieRef = useRef(null);
+  const wrapRef = useRef(null);
+  const containerRef = useRef(null);
+  const animRef = useRef(null);
   const showingRemoteRef = useRef(false);
   const [visible, setVisible] = useState(false);
-  const [played,  setPlayed]  = useState(false);
+  const [played, setPlayed] = useState(false);
   const [remoteData, setRemoteData] = useState(null);
   const [remoteFailed, setRemoteFailed] = useState(false);
   const [remoteLottieBroken, setRemoteLottieBroken] = useState(false);
+  const [cdnLoadError, setCdnLoadError] = useState(false);
+
+  const handleLottieDataFailed = useCallback(() => {
+    if (!remoteUrl || !showingRemoteRef.current) return;
+    remoteLottieCache.delete(remoteUrl);
+    setRemoteLottieBroken(true);
+    setRemoteFailed(true);
+    setRemoteData(null);
+  }, [remoteUrl]);
 
   useEffect(() => {
     setRemoteData(null);
     setRemoteFailed(false);
     setRemoteLottieBroken(false);
     setPlayed(false);
+    setCdnLoadError(false);
   }, [name]);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
       { threshold: 0.3 }
     );
     observer.observe(el);
@@ -221,38 +241,71 @@ const GiftAnimation = ({ name }) => {
   }, [lottieKey]);
 
   useEffect(() => {
-    if (!visible || !animData || played) return;
+    const el = containerRef.current;
+    const L = getCdnLottie();
+    if (!el || !animData) return;
+
+    if (!L?.loadAnimation) {
+      setCdnLoadError(true);
+      return;
+    }
+
+    let anim = null;
+    try {
+      el.innerHTML = "";
+      anim = L.loadAnimation({
+        container: el,
+        renderer: "canvas",
+        loop: false,
+        autoplay: false,
+        animationData: animData,
+      });
+      animRef.current = anim;
+      const onDataFailed = () => handleLottieDataFailed();
+      anim.addEventListener?.("data_failed", onDataFailed);
+      anim.addEventListener?.("error", onDataFailed);
+      return () => {
+        anim.removeEventListener?.("data_failed", onDataFailed);
+        anim.removeEventListener?.("error", onDataFailed);
+        animRef.current = null;
+        try {
+          anim.destroy();
+        } catch {
+          /* ignore */
+        }
+        el.innerHTML = "";
+      };
+    } catch {
+      setCdnLoadError(true);
+      handleLottieDataFailed();
+    }
+  }, [animData, lottieKey, handleLottieDataFailed]);
+
+  useEffect(() => {
+    if (!visible || !animData || played || cdnLoadError) return;
     const t = requestAnimationFrame(() => {
-      if (lottieRef.current) {
-        lottieRef.current.goToAndPlay(0, true);
+      const anim = animRef.current;
+      if (anim) {
+        anim.goToAndPlay(0, true);
         setPlayed(true);
       }
     });
     return () => cancelAnimationFrame(t);
-  }, [visible, played, animData, lottieKey]);
-
-  const handleLottieDataFailed = () => {
-    if (!remoteUrl || !showingRemoteRef.current) return;
-    remoteLottieCache.delete(remoteUrl);
-    setRemoteLottieBroken(true);
-    setRemoteFailed(true);
-    setRemoteData(null);
-  };
+  }, [visible, played, animData, lottieKey, cdnLoadError]);
 
   const showSpinner = remoteUrl && !fallbackData && !remoteData && !remoteFailed;
 
+  const cdnLottie = getCdnLottie();
+  const canRenderLottie = !!(animData && !cdnLoadError && cdnLottie?.loadAnimation);
+
   return (
     <div ref={wrapRef} className="w-full h-full flex items-center justify-center">
-      {animData ? (
-        <Lottie
+      {canRenderLottie ? (
+        <div
           key={lottieKey}
-          lottieRef={lottieRef}
-          animationData={animData}
-          loop={false}
-          autoplay={false}
-          renderer="canvas"
-          onDataFailed={handleLottieDataFailed}
-          style={{ width: "82%", height: "82%", display: "block" }}
+          ref={containerRef}
+          className="flex items-center justify-center [&_canvas]:max-h-full [&_canvas]:max-w-full"
+          style={{ width: "82%", height: "82%" }}
         />
       ) : showSpinner ? (
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
