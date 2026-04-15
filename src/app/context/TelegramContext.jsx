@@ -5,6 +5,7 @@ const TelegramContext = createContext(null);
 
 const SERVICE_STATUS_API = "https://tezpremium.uz/MilliyDokon/control/status.php";
 const STARS_CALCULATE_URL = "https://tezpremium.uz/MilliyDokon/starsapi/calculate.php";
+const CHANNEL_SUBSCRIPTION_API = "https://tezpremium.uz/MilliyDokon/main/channel_subscription.php";
 
 function isStarsCalculateOkFlag(v) {
   return v === true || v === "true" || v === 1 || v === "1";
@@ -40,8 +41,69 @@ export const TelegramProvider = ({ children }) => {
   /** null = hali yuklanmagan; 0 = sotish o'chirilgan; >0 = bir buyurtmadagi maksimal ⭐ */
   const [starsMaxAmount, setStarsMaxAmount] = useState(null);
   const [starsCalculateLoading, setStarsCalculateLoading] = useState(true);
+  const [channelSubChecked, setChannelSubChecked] = useState(false);
+  const [channelSubAllowed, setChannelSubAllowed] = useState(true);
+  const [channelSubLoading, setChannelSubLoading] = useState(false);
   const fetchedRef = useRef(false);
   const initDataRef = useRef("");
+
+  const checkChannelSubscription = useCallback(
+    async (initDataArg) => {
+      const initData = (initDataArg || getInitData() || "").trim();
+      if (!initData) {
+        setChannelSubAllowed(true);
+        setChannelSubChecked(true);
+        return { ok: true, allowed: true, reason: "no_init_data" };
+      }
+
+      setChannelSubLoading(true);
+      try {
+        const res = await fetch(CHANNEL_SUBSCRIPTION_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            initData,
+            init_data: initData,
+          }),
+        });
+
+        const raw = await res.text();
+        let data = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {
+          data = null;
+        }
+
+        const sub = data?.channel_subscription ?? data?.subscription ?? data ?? {};
+        const success = sub?.success === true || sub?.success === "true" || sub?.success === 1 || sub?.success === "1";
+        const isMember = sub?.is_member === true || sub?.is_member === "true" || sub?.is_member === 1 || sub?.is_member === "1";
+        const allowed = !!(success && isMember);
+
+        // Faqat aniq "obuna emas" holatida bloklaymiz.
+        // Server/xom xatoda foydalanuvchini nohaq bloklamaslik uchun app ochiq qoladi.
+        const shouldBlock = res.ok && data && !allowed;
+        setChannelSubAllowed(!shouldBlock);
+        setChannelSubChecked(true);
+
+        return {
+          ok: true,
+          allowed: !shouldBlock,
+          success,
+          is_member: isMember,
+          raw: data,
+        };
+      } catch (err) {
+        console.error("checkChannelSubscription error:", err);
+        setChannelSubAllowed(true);
+        setChannelSubChecked(true);
+        return { ok: false, allowed: true, message: err?.message || "subscription_check_error" };
+      } finally {
+        setChannelSubLoading(false);
+      }
+    },
+    []
+  );
 
   const fetchServiceStatus = useCallback(async (options = {}) => {
     const silent = !!options.silent;
@@ -547,6 +609,7 @@ export const TelegramProvider = ({ children }) => {
       }
 
       (async () => {
+        await checkChannelSubscription(initData);
         await fetchUserFromApi(initData);
         await fetchOrders(initData);
         await fetchPayments(initData);
@@ -576,6 +639,10 @@ export const TelegramProvider = ({ children }) => {
         fetchStarsLimits,
         starsMaxAmount,
         starsCalculateLoading,
+        channelSubChecked,
+        channelSubAllowed,
+        channelSubLoading,
+        checkChannelSubscription,
         isFeatureEnabled,
         createOrder,
         createPremiumOrder,
