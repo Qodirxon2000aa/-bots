@@ -4,6 +4,7 @@ import "../../styles/Payment.css";
 
 const PaymentImages = {
   click: "https://api.logobank.uz/media/logos_preview/Click-01_0xvqWH8.png",
+  uzcard: "https://logo.clearbit.com/uzcard.uz",
   tonkeeper: "https://i.ibb.co/jkLrSV3X/image-Photoroom-1.png",
 };
 
@@ -48,6 +49,21 @@ const PROVIDER_CFG = {
     logoBg: "white",
     logoShadow: "0 4px 18px rgba(37,99,235,.35)",
     payType: "Click · UZS",
+  },
+  uzcard: {
+    logo: PaymentImages.uzcard,
+    title: "Uzcard To'lovi",
+    subtitle: "uzcard.uz · Onlayn to'lov",
+    btnLabel: "Uzcard orqali to'lash",
+    btnSub: "Tez · Xavfsiz · Ishonchli",
+    footer: "Uzcard tizimi tomonidan himoyalangan",
+    topBar: "linear-gradient(90deg,#0b4aa2,#2e7de0,#f59e0b)",
+    btnBg: "linear-gradient(135deg,#0b4aa2 0%,#2e7de0 60%,#f59e0b 100%)",
+    btnShadow: "0 4px 22px rgba(11,74,162,.4)",
+    btnShadowHover: "0 8px 32px rgba(11,74,162,.6)",
+    logoBg: "white",
+    logoShadow: "0 4px 18px rgba(46,125,224,.35)",
+    payType: "Uzcard · UZS",
   },
   tonkeeper: {
     logo: PaymentImages.tonkeeper,
@@ -371,11 +387,12 @@ function TonRateCard({ amount, tonRate, loading }) {
 }
 
 export default function Payment() {
-  const { user } = useTelegram();
+  const { user, getInitData } = useTelegram();
   const [method, setMethod] = useState("click");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [loadedImages, setLoadedImages] = useState(new Set());
+  const [failedImages, setFailedImages] = useState(new Set());
   const [submitLoading, setSubmitLoading] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -424,6 +441,11 @@ export default function Payment() {
 
   const handleImageLoad = (m) => setLoadedImages((prev) => new Set(prev).add(m));
   const isImageLoaded = (m) => loadedImages.has(m);
+  const handleImageError = (m) => {
+    setFailedImages((prev) => new Set(prev).add(m));
+    setLoadedImages((prev) => new Set(prev).add(m));
+  };
+  const isImageFailed = (m) => failedImages.has(m);
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -456,6 +478,21 @@ export default function Payment() {
       return newStatus;
     } catch (err) {
       console.error("❌ checkTonStatus:", err);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const checkUzcardStatus = async (paymentId) => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch(`https://tezpremium.uz/MilliyDokon/uzcard/status.php?payment_id=${paymentId}`);
+      const data = await res.json();
+      const newStatus = data.status || "pending";
+      setModalStatus(newStatus);
+      return newStatus;
+    } catch (err) {
+      console.error("❌ checkUzcardStatus:", err);
     } finally {
       setStatusLoading(false);
     }
@@ -501,6 +538,41 @@ export default function Payment() {
           setError(data.message || "To'lovda xatolik yuz berdi");
         }
 
+      } else if (method === "uzcard") {
+        const initData = (typeof getInitData === "function" ? getInitData() : "")?.trim();
+        if (!initData) {
+          setError("Telegram initData topilmadi");
+          return;
+        }
+
+        const res = await fetch("https://tezpremium.uz/MilliyDokon/uzcard/review.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            initData,
+            amount: Math.floor(amountNum),
+          }),
+        });
+        const data = await res.json();
+        const paymentLink =
+          data.link ||
+          data.pay_url ||
+          data.payment_url ||
+          data.url ||
+          (data.payment_id ? `https://multinet.uz/mdu/pay/${data.payment_id}` : null);
+
+        if (data.ok && data.payment_id) {
+          setModalProvider("uzcard");
+          setModalLink(paymentLink);
+          setModalPaymentId(data.payment_id);
+          setModalTonAmount(null);
+          setModalStatus(null);
+          setModalOpen(true);
+          const init = await checkUzcardStatus(data.payment_id);
+          if (init === "paid") handlePaid();
+        } else {
+          setError(data.message || "Uzcard to'lovida xatolik yuz berdi");
+        }
       } else if (method === "tonkeeper") {
         const res  = await fetch(`https://tezpremium.uz/MilliyDokon/ton/tonpay.php?user_id=${user.id}&amount=${amountNum}`);
         const data = await res.json();
@@ -552,7 +624,7 @@ export default function Payment() {
         <div style={{ marginBottom: 20 }}>
           <h3 className="payment-title">To'lov tizimini tanlang</h3>
           <div className="payment-methods">
-            {["click", "tonkeeper"].map((m) => (
+            {["click", "uzcard", "tonkeeper"].map((m) => (
               <div
                 key={m}
                 onClick={() => { setMethod(m); setError(""); }}
@@ -560,20 +632,25 @@ export default function Payment() {
                 style={{ cursor: "pointer" }}
               >
                 {!isImageLoaded(m) && <div className="payment-skeleton" />}
-                <img
-                  src={PaymentImages[m]}
-                  alt={m.charAt(0).toUpperCase() + m.slice(1)}
-                  className={`payment-logo ${isImageLoaded(m) ? "loaded" : ""}`}
-                  onLoad={() => handleImageLoad(m)}
-                  onError={(e) => {
-                    handleImageLoad(m);
-                    e.currentTarget.style.display = "none";
-                    const fallback = { click: { letter: "C", color: "#fdb813" }, tonkeeper: { letter: "T", color: "#0098ea" } }[m];
-                    if (e.currentTarget.parentElement && fallback) {
-                      e.currentTarget.parentElement.innerHTML = `<span style="font-size:40px;font-weight:700;color:${fallback.color};">${fallback.letter}</span>`;
-                    }
-                  }}
-                />
+                {!isImageFailed(m) ? (
+                  <img
+                    src={PaymentImages[m]}
+                    alt={m.charAt(0).toUpperCase() + m.slice(1)}
+                    className={`payment-logo ${isImageLoaded(m) ? "loaded" : ""}`}
+                    onLoad={() => handleImageLoad(m)}
+                    onError={() => handleImageError(m)}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      fontSize: 40,
+                      fontWeight: 700,
+                      color: ({ click: "#fdb813", uzcard: "#0b4aa2", tonkeeper: "#0098ea" })[m] || "#64748b",
+                    }}
+                  >
+                    {({ click: "C", uzcard: "U", tonkeeper: "T" })[m] || "P"}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -613,7 +690,7 @@ export default function Payment() {
         </button>
       </div>
 
-      {modalOpen && modalLink && (
+      {modalOpen && (
         <ReceiptModal
           provider={modalProvider}
           link={modalLink}
@@ -622,7 +699,13 @@ export default function Payment() {
           tonAmount={modalTonAmount}
           status={modalStatus}
           statusLoading={statusLoading}
-          onCheckStatus={modalProvider === "click" ? checkClickStatus : checkTonStatus}
+          onCheckStatus={
+            modalProvider === "click"
+              ? checkClickStatus
+              : modalProvider === "uzcard"
+                ? checkUzcardStatus
+                : checkTonStatus
+          }
           onClose={() => setModalOpen(false)}
           onPaid={handlePaid}
         />
