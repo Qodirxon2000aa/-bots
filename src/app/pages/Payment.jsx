@@ -553,7 +553,21 @@ export default function Payment() {
             amount: Math.floor(amountNum),
           }),
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {
+          data = null;
+        }
+        if (!res.ok) {
+          setError((data && data.message) || raw || `HTTP ${res.status}`);
+          return;
+        }
+        if (!data || typeof data !== "object") {
+          setError(raw || "Uzcard javobi JSON emas");
+          return;
+        }
         const paymentLink =
           data.link ||
           data.pay_url ||
@@ -593,7 +607,7 @@ export default function Payment() {
         }
       }
     } catch (err) {
-      setError("To'lov yuborishda xatolik yuz berdi");
+      setError(err?.message || "To'lov yuborishda xatolik yuz berdi");
     } finally {
       setSubmitLoading(false);
     }
