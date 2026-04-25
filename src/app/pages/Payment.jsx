@@ -5,6 +5,7 @@ import "../../styles/Payment.css";
 const PaymentImages = {
   click: "https://api.logobank.uz/media/logos_preview/Click-01_0xvqWH8.png",
   uzcard: "https://logo.clearbit.com/uzcard.uz",
+  humo: "https://humocard.uz/bitrix/templates/main/img/logo2.png",
   tonkeeper: "https://i.ibb.co/jkLrSV3X/image-Photoroom-1.png",
 };
 
@@ -34,6 +35,19 @@ function openExternalLink(url, provider) {
   }
 }
 
+const PAYMENT_SETTINGS_URL = "https://tezpremium.uz/MilliyDokon/control/settings.php";
+
+async function fetchPaymentSettings() {
+  try {
+    const res = await fetch(PAYMENT_SETTINGS_URL, { cache: "no-store" });
+    const data = await res.json();
+    if (data?.ok && data.settings && typeof data.settings === "object") return data.settings;
+  } catch (e) {
+    console.error("fetchPaymentSettings:", e);
+  }
+  return null;
+}
+
 const PROVIDER_CFG = {
   click: {
     logo: PaymentImages.click,
@@ -61,9 +75,24 @@ const PROVIDER_CFG = {
     btnBg: "linear-gradient(135deg,#0b4aa2 0%,#2e7de0 60%,#f59e0b 100%)",
     btnShadow: "0 4px 22px rgba(11,74,162,.4)",
     btnShadowHover: "0 8px 32px rgba(11,74,162,.6)",
-    logoBg: "white",
-    logoShadow: "0 4px 18px rgba(46,125,224,.35)",
+    logoBg: "transparent",
+    logoShadow: "none",
     payType: "Uzcard · UZS",
+  },
+  humo: {
+    logo: PaymentImages.humo,
+    title: "Humo To'lovi",
+    subtitle: "humocard.uz · Onlayn to'lov",
+    btnLabel: "Humo orqali to'lash",
+    btnSub: "Tez · Xavfsiz · Ishonchli",
+    footer: "Humo tizimi tomonidan himoyalangan",
+    topBar: "linear-gradient(90deg,#b91c1c,#ef4444,#f97316)",
+    btnBg: "linear-gradient(135deg,#991b1b 0%,#ef4444 60%,#f97316 100%)",
+    btnShadow: "0 4px 22px rgba(185,28,28,.4)",
+    btnShadowHover: "0 8px 32px rgba(185,28,28,.6)",
+    logoBg: "transparent",
+    logoShadow: "none",
+    payType: "Humo · UZS",
   },
   tonkeeper: {
     logo: PaymentImages.tonkeeper,
@@ -261,6 +290,198 @@ function ReceiptModal({ provider, link, paymentId, amount, tonAmount, status, st
   );
 }
 
+/** Uzcard / Humo: avto-to‘lov yo‘q — karta raqami va qo‘lda o‘tkazish (settings.php) */
+function ManualTransferModal({
+  provider,
+  paymentId,
+  amount,
+  cardPan,
+  cardName,
+  status,
+  statusLoading,
+  onCheckStatus,
+  onClose,
+  onPaid,
+}) {
+  const [visible, setVisible] = useState(false);
+  const pollRef = useRef(null);
+  const cfg = PROVIDER_CFG[provider] || PROVIDER_CFG.uzcard;
+
+  const terminal = status === "paid" || status === "failed" || status === "cancel";
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!paymentId || terminal) return;
+    pollRef.current = setInterval(() => onCheckStatus(paymentId), 4000);
+    return () => clearInterval(pollRef.current);
+  }, [paymentId, status, terminal]);
+
+  useEffect(() => {
+    if (status !== "paid") return;
+    clearInterval(pollRef.current);
+    const t = setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => onPaid(), 300);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [status]);
+
+  const handleClose = () => {
+    clearInterval(pollRef.current);
+    setVisible(false);
+    setTimeout(onClose, 300);
+  };
+
+  const statusMap = {
+    pending: { label: "Kutilmoqda", color: "#f59e0b", dot: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+    paid: { label: "To'landi ✓", color: "#22c55e", dot: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+    failed: { label: "Xato", color: "#ef4444", dot: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+    cancel: { label: "Bekor qilindi", color: "#94a3b8", dot: "#94a3b8", bg: "rgba(148,163,184,0.15)" },
+  };
+  const s = statusMap[status] || statusMap.pending;
+
+  const copyCard = async () => {
+    const raw = String(cardPan || "").replace(/\s/g, "");
+    if (!raw) return;
+    try {
+      await navigator.clipboard.writeText(raw);
+      window.Telegram?.WebApp?.showPopup?.({ message: "Karta raqami nusxalandi" });
+    } catch {
+      try {
+        window.Telegram?.WebApp?.showPopup?.({ message: raw });
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  return (
+    <div className="rcpt-overlay" onClick={handleClose}>
+      <div
+        className="rcpt-sheet"
+        onClick={(e) => e.stopPropagation()}
+        style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(40px)" }}
+      >
+        <div className="rcpt-top-bar" style={{ background: cfg.topBar }} />
+        <div className="rcpt-handle" />
+        <button type="button" className="rcpt-close" onClick={handleClose}>✕</button>
+
+        <div className="rcpt-header">
+          <div className="rcpt-logo" style={{ background: cfg.logoBg, boxShadow: cfg.logoShadow }}>
+            <img src={cfg.logo} alt={provider} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          </div>
+          <div>
+            <h2>{cfg.title}</h2>
+            <p>Qo'lda o'tkazish · {cfg.payType}</p>
+          </div>
+        </div>
+
+        <div className="rcpt-amount">
+          <div className="rcpt-amount-label">To'lov miqdori</div>
+          <div className="rcpt-amount-val">
+            {amount ? Number(amount).toLocaleString("uz-UZ") : "—"}
+            <span>so'm</span>
+          </div>
+        </div>
+
+        <p className="manual-transfer-hint">
+          Bu yerda avtomatik to'lov yo'q. Iltimos, <strong>aniq shu miqdordagi</strong> mablag'ni quyidagi kartaga
+          o'tkazing. O'tkazgach pastdagi «Yangilash»ni bosing — tekshiruvdan keyin balans yangilanadi.
+        </p>
+        {!String(cardPan || "").trim() && (
+          <p className="manual-transfer-hint manual-transfer-hint--warn">
+            Karta raqami hozircha yuklanmadi. Administratorga murojaat qiling — serverda karta rekviziti sozlanganini tekshiring.
+          </p>
+        )}
+
+        <div className="rcpt-rows" style={{ paddingTop: 8 }}>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Karta raqami</span>
+            <span className="rcpt-row-v manual-card-pan">{cardPan || "—"}</span>
+          </div>
+          {!!String(cardName || "").trim() && (
+            <div className="rcpt-row">
+              <span className="rcpt-row-k">Karta egasi</span>
+              <span className="rcpt-row-v">{String(cardName).trim()}</span>
+            </div>
+          )}
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">To'lov ID</span>
+            <span className="rcpt-row-v" style={{ fontSize: 11, wordBreak: "break-all" }}>{paymentId || "—"}</span>
+          </div>
+          <div className="rcpt-row">
+            <span className="rcpt-row-k">Holat</span>
+            <span className="rcpt-badge" style={{ background: s.bg, color: s.color }}>
+              <span
+                className={`rcpt-dot ${!terminal ? "pulse" : ""}`}
+                style={{ background: s.dot }}
+              />
+              {s.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="rcpt-scissors">
+          <div className="rcpt-dash" />
+          <span className="rcpt-scissors-icon">✂</span>
+          <div className="rcpt-dash" />
+        </div>
+
+        <div className="rcpt-actions">
+          <button
+            type="button"
+            className="rcpt-pay-btn"
+            onClick={copyCard}
+            disabled={!String(cardPan || "").trim()}
+            style={{
+              background: cfg.btnBg,
+              boxShadow: cfg.btnShadow,
+              width: "100%",
+              border: "none",
+              opacity: String(cardPan || "").trim() ? 1 : 0.45,
+            }}
+          >
+            <div className="rcpt-btn-left">
+              <div className="rcpt-btn-icon">
+                <span style={{ fontSize: 18 }}>📋</span>
+              </div>
+              <div>
+                <div className="rcpt-btn-title">Karta raqamini nusxalash</div>
+                <div className="rcpt-btn-sub">Bank ilovasiga qo'shish uchun</div>
+              </div>
+            </div>
+          </button>
+
+          <div className="rcpt-refresh-row">
+            <span className="rcpt-refresh-label">To'lov qabul qilinganini tekshirish</span>
+            <button
+              type="button"
+              className="rcpt-refresh-btn"
+              onClick={() => onCheckStatus(paymentId)}
+              disabled={statusLoading || terminal}
+            >
+              {statusLoading ? (
+                <>
+                  <svg className="rcpt-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Tekshirilmoqda
+                </>
+              ) : "🔄 Yangilash"}
+            </button>
+          </div>
+        </div>
+
+        <div className="rcpt-footer">Qo'lda o'tkazish · admin tekshiruvi</div>
+      </div>
+    </div>
+  );
+}
+
 function SuccessOverlay({ amount, onDone }) {
   const [phase, setPhase] = useState(0);
 
@@ -403,6 +624,9 @@ export default function Payment() {
   const [modalStatus, setModalStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
+  /** Uzcard / Humo: qo'lda karta — ReceiptModal o'rniga */
+  const [manualTransfer, setManualTransfer] = useState(null);
+
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [tonRate, setTonRate] = useState(null);
@@ -498,8 +722,25 @@ export default function Payment() {
     }
   };
 
+  const checkHumoStatus = async (paymentId) => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch(`https://tezpremium.uz/MilliyDokon/payments/status.php?payment_id=${paymentId}`);
+      const data = await res.json();
+      const newStatus = data.status || "pending";
+      setModalStatus(newStatus);
+      return newStatus;
+    } catch (err) {
+      console.error("❌ checkHumoStatus:", err);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
   const handlePaid = () => {
     setModalOpen(false);
+    setModalLink(null);
+    setManualTransfer(null);
     setShowSuccess(true);
   };
 
@@ -568,24 +809,69 @@ export default function Payment() {
           setError(raw || "Uzcard javobi JSON emas");
           return;
         }
-        const paymentLink =
-          data.link ||
-          data.pay_url ||
-          data.payment_url ||
-          data.url ||
-          (data.payment_id ? `https://multinet.uz/mdu/pay/${data.payment_id}` : null);
 
         if (data.ok && data.payment_id) {
-          setModalProvider("uzcard");
-          setModalLink(paymentLink);
-          setModalPaymentId(data.payment_id);
-          setModalTonAmount(null);
+          const settings = await fetchPaymentSettings();
+          const cardPan = String(settings?.uzcard ?? "").trim();
+          const cardName = String(settings?.uzcard_name ?? "").replace(/\\\//g, "/").trim();
           setModalStatus(null);
-          setModalOpen(true);
+          setManualTransfer({
+            provider: "uzcard",
+            paymentId: data.payment_id,
+            cardPan,
+            cardName,
+          });
           const init = await checkUzcardStatus(data.payment_id);
           if (init === "paid") handlePaid();
         } else {
           setError(data.message || "Uzcard to'lovida xatolik yuz berdi");
+        }
+      } else if (method === "humo") {
+        const initData = (typeof getInitData === "function" ? getInitData() : "")?.trim();
+        if (!initData) {
+          setError("Telegram initData topilmadi");
+          return;
+        }
+
+        const res = await fetch("https://tezpremium.uz/MilliyDokon/payments/review.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            initData,
+            amount: Math.floor(amountNum),
+          }),
+        });
+        const raw = await res.text();
+        let data = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {
+          data = null;
+        }
+        if (!res.ok) {
+          setError((data && data.message) || raw || `HTTP ${res.status}`);
+          return;
+        }
+        if (!data || typeof data !== "object") {
+          setError(raw || "Humo javobi JSON emas");
+          return;
+        }
+
+        if (data.ok && data.payment_id) {
+          const settings = await fetchPaymentSettings();
+          const cardPan = String(settings?.humo ?? "").trim();
+          const cardName = String(settings?.humo_name ?? "").replace(/\\\//g, "/").trim();
+          setModalStatus(null);
+          setManualTransfer({
+            provider: "humo",
+            paymentId: data.payment_id,
+            cardPan,
+            cardName,
+          });
+          const init = await checkHumoStatus(data.payment_id);
+          if (init === "paid") handlePaid();
+        } else {
+          setError(data.message || "Humo to'lovida xatolik yuz berdi");
         }
       } else if (method === "tonkeeper") {
         const res  = await fetch(`https://tezpremium.uz/MilliyDokon/ton/tonpay.php?user_id=${user.id}&amount=${amountNum}`);
@@ -638,7 +924,7 @@ export default function Payment() {
         <div style={{ marginBottom: 20 }}>
           <h3 className="payment-title">To'lov tizimini tanlang</h3>
           <div className="payment-methods">
-            {["click", "uzcard", "tonkeeper"].map((m) => (
+            {["click", "uzcard", "humo", "tonkeeper"].map((m) => (
               <div
                 key={m}
                 onClick={() => { setMethod(m); setError(""); }}
@@ -659,10 +945,10 @@ export default function Payment() {
                     style={{
                       fontSize: 40,
                       fontWeight: 700,
-                      color: ({ click: "#fdb813", uzcard: "#0b4aa2", tonkeeper: "#0098ea" })[m] || "#64748b",
+                      color: ({ click: "#fdb813", uzcard: "#0b4aa2", humo: "#b91c1c", tonkeeper: "#0098ea" })[m] || "#64748b",
                     }}
                   >
-                    {({ click: "C", uzcard: "U", tonkeeper: "T" })[m] || "P"}
+                    {({ click: "C", uzcard: "U", humo: "H", tonkeeper: "T" })[m] || "P"}
                   </span>
                 )}
               </div>
@@ -718,9 +1004,29 @@ export default function Payment() {
               ? checkClickStatus
               : modalProvider === "uzcard"
                 ? checkUzcardStatus
-                : checkTonStatus
+                : modalProvider === "humo"
+                  ? checkHumoStatus
+                  : checkTonStatus
           }
           onClose={() => setModalOpen(false)}
+          onPaid={handlePaid}
+        />
+      )}
+
+      {manualTransfer && (
+        <ManualTransferModal
+          provider={manualTransfer.provider}
+          paymentId={manualTransfer.paymentId}
+          amount={amount}
+          cardPan={manualTransfer.cardPan}
+          cardName={manualTransfer.cardName}
+          status={modalStatus}
+          statusLoading={statusLoading}
+          onCheckStatus={manualTransfer.provider === "uzcard" ? checkUzcardStatus : checkHumoStatus}
+          onClose={() => {
+            setManualTransfer(null);
+            setModalStatus(null);
+          }}
           onPaid={handlePaid}
         />
       )}

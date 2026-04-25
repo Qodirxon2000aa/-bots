@@ -193,6 +193,35 @@
   opacity: 1;
 }
 
+.manual-transfer-hint {
+  margin: 0 22px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.manual-transfer-hint strong {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.manual-transfer-hint--warn {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(253, 224, 71, 0.9);
+}
+
+.manual-card-pan {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+}
+
 .payment-input-block {
   margin-bottom: 16px;
 }
