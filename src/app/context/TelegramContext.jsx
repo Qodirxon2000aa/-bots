@@ -16,6 +16,8 @@ const DEFAULT_SERVICE_SETTINGS = {
   premium: "on",
   gift: "on",
   nft: "on",
+  uzcard: "on",
+  humo: "on",
 };
 
 function normalizeServiceSettings(raw) {
