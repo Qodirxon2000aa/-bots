@@ -392,6 +392,9 @@ function ManualTransferModal({
           Bu yerda avtomatik to'lov yo'q. Iltimos, <strong>aniq shu miqdordagi</strong> mablag'ni quyidagi kartaga
           o'tkazing. O'tkazgach pastdagi «Yangilash»ni bosing — tekshiruvdan keyin balans yangilanadi.
         </p>
+        <p className="manual-transfer-hint manual-transfer-hint--warn">
+          ⏱️ Eslatma: bu to'lov 10 daqiqadan keyin avtomatik bekor qilinadi.
+        </p>
         {!String(cardPan || "").trim() && (
           <p className="manual-transfer-hint manual-transfer-hint--warn">
             Karta raqami hozircha yuklanmadi. Administratorga murojaat qiling — serverda karta rekviziti sozlanganini tekshiring.
@@ -608,7 +611,7 @@ function TonRateCard({ amount, tonRate, loading }) {
 }
 
 export default function Payment() {
-  const { user, getInitData } = useTelegram();
+  const { user, getInitData, serviceSettings } = useTelegram();
   const [method, setMethod] = useState("click");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
@@ -631,6 +634,22 @@ export default function Payment() {
 
   const [tonRate, setTonRate] = useState(null);
   const [tonRateLoading, setTonRateLoading] = useState(false);
+
+  const paymentMethods = ["click", "uzcard", "humo", "tonkeeper"];
+  const methodEnabledMap = {
+    click: true,
+    tonkeeper: true,
+    uzcard: String(serviceSettings?.uzcard ?? "on").toLowerCase() === "on",
+    humo: String(serviceSettings?.humo ?? "on").toLowerCase() === "on",
+  };
+
+  const isMethodEnabled = (m) => !!methodEnabledMap[m];
+
+  useEffect(() => {
+    if (isMethodEnabled(method)) return;
+    const fallback = paymentMethods.find((m) => isMethodEnabled(m)) || "click";
+    setMethod(fallback);
+  }, [method, serviceSettings]);
 
   useEffect(() => {
     if (method === "tonkeeper") {
@@ -751,6 +770,11 @@ export default function Payment() {
 
   const handleSubmit = async () => {
     const amountNum = parseFloat(amount);
+    if (!isMethodEnabled(method)) {
+      const methodName = method === "uzcard" ? "Uzcard" : method === "humo" ? "Humo" : method;
+      setError(`${methodName} to'lovi hozircha o'chirilgan`);
+      return;
+    }
     if (!amount || isNaN(amountNum))    { setError("To'lov miqdorini kiriting"); return; }
     if (amountNum < 1000)               { setError("To'lov miqdori 1000 so'mdan kam bo'lmasligi kerak"); return; }
     if (amountNum > 1000000)            { setError("To'lov miqdori 1,000,000 so'mdan oshmasligi kerak"); return; }
@@ -919,17 +943,24 @@ export default function Payment() {
           <p className="payment-info-text">
             ℹ️ To'lov miqdori 1000 so'mdan kam va 1,000,000 so'mdan oshmasligi kerak
           </p>
+          <p className="payment-info-text payment-info-warn">
+            ⏱️ Eslatma: to'lov 10 daqiqadan keyin avtomatik bekor qilinadi.
+          </p>
         </div>
 
         <div style={{ marginBottom: 20 }}>
           <h3 className="payment-title">To'lov tizimini tanlang</h3>
           <div className="payment-methods">
-            {["click", "uzcard", "humo", "tonkeeper"].map((m) => (
+            {paymentMethods.map((m) => (
               <div
                 key={m}
-                onClick={() => { setMethod(m); setError(""); }}
-                className={`payment-method ${method === m ? "selected" : ""}`}
-                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  if (!isMethodEnabled(m)) return;
+                  setMethod(m);
+                  setError("");
+                }}
+                className={`payment-method ${method === m ? "selected" : ""} ${!isMethodEnabled(m) ? "disabled" : ""}`}
+                style={{ cursor: isMethodEnabled(m) ? "pointer" : "not-allowed" }}
               >
                 {!isImageLoaded(m) && <div className="payment-skeleton" />}
                 {!isImageFailed(m) ? (
@@ -951,6 +982,7 @@ export default function Payment() {
                     {({ click: "C", uzcard: "U", humo: "H", tonkeeper: "T" })[m] || "P"}
                   </span>
                 )}
+                {!isMethodEnabled(m) && <span className="payment-method-off-badge">OFF</span>}
               </div>
             ))}
           </div>
