@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '@/app/context/AppContext';
 import { useTelegram } from '@/app/context/TelegramContext';
@@ -24,12 +24,36 @@ function hideLonelyAtSymbol() {
   });
 }
 
+type LeaderboardTab = 'all' | 'month' | 'week';
+
 export function LeaderboardPage() {
   const navigate = useNavigate();
-  const { leaderboard, leaderboardWeek, leaderboardLoading, resetAllTimeLeaderboard } = useApp();
+  const {
+    leaderboard,
+    monthlyLeaderboard,
+    weeklyLeaderboard,
+    leaderboardMonth,
+    leaderboardWeek,
+    leaderboardLoading,
+    resetAllTimeLeaderboard,
+  } = useApp();
   const { user: tgUser } = useTelegram();
 
+  const [tab, setTab] = useState<LeaderboardTab>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
+
+  const activeEntries = useMemo(() => {
+    if (tab === 'all') return leaderboard;
+    if (tab === 'month') return monthlyLeaderboard;
+    return weeklyLeaderboard;
+  }, [tab, leaderboard, monthlyLeaderboard, weeklyLeaderboard]);
+
+  const periodSubtitle = useMemo(() => {
+    if (leaderboardLoading) return 'Yuklanmoqda…';
+    if (tab === 'all') return 'Butun vaqt';
+    if (tab === 'month') return leaderboardMonth ?? 'Joriy oy';
+    return leaderboardWeek ? `Hafta: ${leaderboardWeek}` : 'Haftalik reyting';
+  }, [leaderboardLoading, tab, leaderboardMonth, leaderboardWeek]);
 
   /* ===================== 🔥 AUTO HIDE @ ===================== */
 
@@ -46,7 +70,7 @@ export function LeaderboardPage() {
     });
 
     return () => observer.disconnect();
-  }, [leaderboard]);
+  }, [activeEntries]);
 
   /* ===================== RESET ===================== */
 
@@ -58,10 +82,31 @@ export function LeaderboardPage() {
 
   return (
     <div className="min-h-screen">
-      <TopBar
-        title="Reyting"
-        subtitle={leaderboardWeek ? `Hafta: ${leaderboardWeek}` : 'Haftalik top'}
-      />
+      <TopBar title="Reyting" subtitle={periodSubtitle} />
+
+      <div className="px-4 pt-3">
+        <div className="flex gap-2 rounded-xl bg-muted/50 p-1">
+          {(
+            [
+              { id: 'all' as const, label: 'Butun vaqt' },
+              { id: 'month' as const, label: 'Oy' },
+              { id: 'week' as const, label: 'Hafta' },
+            ] as const
+          ).map(({ id, label }) => (
+            <Button
+              key={id}
+              type="button"
+              variant={tab === id ? 'primary' : 'ghost'}
+              size="sm"
+              fullWidth
+              className="rounded-lg text-xs sm:text-sm"
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="p-4 space-y-6">
         {leaderboardLoading ? (
@@ -70,14 +115,14 @@ export function LeaderboardPage() {
               <ListItemSkeleton key={i} />
             ))}
           </div>
-        ) : leaderboard.length > 0 ? (
+        ) : activeEntries.length > 0 ? (
           <>
-            <PodiumCard entries={leaderboard} />
+            <PodiumCard entries={activeEntries} />
 
             <div className="space-y-2 mt-6">
-              {leaderboard.slice(3).map((entry) => (
+              {activeEntries.slice(3).map((entry) => (
                 <LeaderboardRow
-                  key={`${entry.rank}-${entry.userId ?? entry.displayName}`}
+                  key={`${tab}-${entry.rank}-${entry.userId ?? entry.displayName}`}
                   entry={entry}
                   isCurrentUser={
                     tgUser?.id != null &&
@@ -92,7 +137,7 @@ export function LeaderboardPage() {
           <EmptyState
             icon={<Trophy className="w-20 h-20 text-muted-foreground/70" />}
             title="Hozircha reyting bo‘sh"
-            description="Yulduzlar sotib oling va birinchi o‘rinni egallang!"
+            description="Yulduzlar sotib oling va birinchi o‘rinni egallang! Boshqa davr (Oy / Hafta) tabini ham tekshirib ko‘ring."
             action={
               <Button
                 variant="primary"
